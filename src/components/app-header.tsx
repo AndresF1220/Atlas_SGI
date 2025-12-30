@@ -84,27 +84,27 @@ export default function AppHeader() {
   }
 
   const breadcrumbItems = useMemo(() => {
-    let accumulatedPath = '';
-    const relevantSegments = pathSegments.map((segment) =>
-        hardcodedTranslations[segment] ? segment : dataMap[segment] ? segment : null
-    ).filter(Boolean) as string[];
-
     return pathSegments.map((segment, index) => {
-        const isDynamic = !hardcodedTranslations[segment];
-        const label = hardcodedTranslations[segment] || dataMap[segment] || segment;
+        const isDynamicSegmentName = ['area', 'proceso', 'subproceso'].includes(segment);
+        if (isDynamicSegmentName) {
+            return null;
+        }
 
-        // Create href by joining segments up to the current one
+        const isDynamicId = !hardcodedTranslations[segment];
+        const label = hardcodedTranslations[segment] || dataMap[segment] || segment;
         const href = `/${pathSegments.slice(0, index + 1).join('/')}`;
         const isLast = index === pathSegments.length - 1;
 
-        if (isLoading && isDynamic && isLast) {
-             return { href, label: 'Cargando...', isLast: true, isDynamic: true };
+        if (isLoading && isDynamicId && isLast) {
+             return { href, label: 'Cargando...', isLast: true, isClickable: false };
         }
 
-        return { href, label, isLast, isDynamic: isDynamic };
-    });
-}, [pathSegments, dataMap, isLoading]);
+        const isSubprocesoId = pathSegments[index - 1] === 'subproceso';
+        const isClickable = !isLast && !isSubprocesoId;
 
+        return { href, label, isLast, isClickable };
+    }).filter(Boolean);
+}, [pathSegments, dataMap, isLoading]);
 
   return (
     <header className="flex h-16 items-center gap-4 border-b bg-background px-4 lg:px-6 sticky top-0 z-30">
@@ -120,23 +120,25 @@ export default function AppHeader() {
         </SheetContent>
       </Sheet>
 
-      <div className="w-full flex-1">
+      <div className="w-full flex-1 flex items-center gap-4">
         <Breadcrumb className="hidden md:flex">
           <BreadcrumbList>
              {breadcrumbItems.map((item, index) => (
                 <Fragment key={item.href}>
-                  {index > 0 && <BreadcrumbSeparator />}
-                  <BreadcrumbItem>
-                    {item.isLast ? (
-                       <BreadcrumbPage className="font-normal capitalize">{item.label}</BreadcrumbPage>
-                    ) : (
-                      <BreadcrumbLink asChild>
-                        <Link href={item.href} className="capitalize">
-                          {item.label}
-                        </Link>
-                      </BreadcrumbLink>
-                    )}
-                  </BreadcrumbItem>
+                  {index > 0 && item.label && <BreadcrumbSeparator />}
+                   {item.label && (
+                        <BreadcrumbItem>
+                            {item.isClickable ? (
+                            <BreadcrumbLink asChild>
+                                <Link href={item.href} className="capitalize">
+                                {item.label}
+                                </Link>
+                            </BreadcrumbLink>
+                            ) : (
+                            <BreadcrumbPage className="font-normal capitalize">{item.label}</BreadcrumbPage>
+                            )}
+                        </BreadcrumbItem>
+                   )}
                 </Fragment>
              ))}
           </BreadcrumbList>

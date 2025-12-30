@@ -7,9 +7,6 @@ import RepoEmbed from '@/components/dashboard/RepoEmbed';
 import { useSubproceso, useProceso, useArea } from '@/hooks/use-areas-data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EntityOptionsDropdown } from '@/components/dashboard/EntityOptionsDropdown';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 
 export default function SubprocesoIdPage() {
@@ -43,20 +40,15 @@ export default function SubprocesoIdPage() {
        <div className="flex flex-col items-center justify-center h-96 text-center">
         <h2 className="text-2xl font-bold font-headline mb-4">Subproceso no encontrado</h2>
         <p className="text-muted-foreground mb-6">El subproceso que busca no existe, ha sido eliminado o la ruta es incorrecta.</p>
-        <Button asChild>
-          <Link href={procesoId ? `/inicio/documentos/area/${areaId}/proceso/${procesoId}` : '/inicio/documentos'}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Volver al Proceso
-          </Link>
-        </Button>
       </div>
     );
   }
   
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center w-full">
         <h1 className="text-3xl font-bold tracking-tight font-headline capitalize">{subproceso.nombre}</h1>
+        <div className="flex items-center gap-2">
         {userRole === 'superadmin' && (
             <EntityOptionsDropdown
                 entityId={subproceso.id}
@@ -67,6 +59,7 @@ export default function SubprocesoIdPage() {
                 redirectOnDelete={`/inicio/documentos/area/${area.id}/proceso/${proceso.id}`}
             />
         )}
+        </div>
       </div>
 
       <CaracterizacionPanel idEntidad={subproceso.id} tipo="subproceso" />
