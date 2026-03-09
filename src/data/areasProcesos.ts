@@ -13,6 +13,7 @@ export type Proceso = {
 export type Area = {
     id: string;
     nombre: string;
+    icono: string;
     procesos: Proceso[];
 }
 

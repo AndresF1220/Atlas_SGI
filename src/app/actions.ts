@@ -1,4 +1,3 @@
-
 'use server';
 
 import { z } from 'zod';
@@ -6,6 +5,25 @@ import { getAuth } from 'firebase-admin/auth';
 import { slugify } from '@/lib/slug';
 import { SEED_AREAS } from '@/data/seed-map';
 import { ref, deleteObject, uploadBytes, getDownloadURL } from 'firebase/storage';
+
+
+const iconMap: { [key: string]: string } = {
+  "gestión de calidad": "ClipboardCheck",
+  "dirección administrativa y financiera": "Landmark",
+  "dirección de gestión del riesgo": "ShieldAlert",
+  "asesoría jurídica": "Scale",
+  "comunicaciones": "Megaphone",
+  "sarlaft": "Eye",
+  "control interno": "SearchCheck",
+  "contratación": "FileSignature",
+  "dirección de participación intercultural": "HeartHandshake",
+  "default": "Building",
+};
+
+const getIconForArea = (areaName: string): string => {
+  const normalizedAreaName = areaName.toLowerCase();
+  return iconMap[normalizedAreaName] || iconMap["default"];
+};
 
 
 const createSchema = z.object({
@@ -56,28 +74,32 @@ export async function createEntityAction(
             createdAt: new Date(),
         };
         
-        const tempRef = adminDb.collection('temp').doc(); // Generate ID upfront
+        if (type === 'area') {
+            entityData.icono = getIconForArea(name);
+        }
+        
+        const tempRef = adminDb.collection('temp').doc();
         entityData.id = tempRef.id;
 
         let finalEntityRef;
         let caracterizacionId = '';
 
         if (type === 'area') {
-            finalEntityRef = adminDb.doc(`areas/${tempRef.id}`);
-            caracterizacionId = `area-${tempRef.id}`;
+            finalEntityRef = adminDb.doc('areas/' + tempRef.id);
+            caracterizacionId = 'area-' + tempRef.id;
         } else if (type === 'process' && parentId) {
-            finalEntityRef = adminDb.doc(`areas/${parentId}/procesos/${tempRef.id}`);
-            caracterizacionId = `process-${tempRef.id}`;
+            finalEntityRef = adminDb.doc('areas/' + parentId + '/procesos/' + tempRef.id);
+            caracterizacionId = 'process-' + tempRef.id;
         } else if (type === 'subprocess' && parentId && grandParentId) {
-            finalEntityRef = adminDb.doc(`areas/${grandParentId}/procesos/${parentId}/subprocesos/${tempRef.id}`);
-            caracterizacionId = `subproceso-${tempRef.id}`;
+            finalEntityRef = adminDb.doc('areas/' + grandParentId + '/procesos/' + parentId + '/subprocesos/' + tempRef.id);
+            caracterizacionId = 'subproceso-' + tempRef.id;
         } else {
             return { message: 'Error', error: 'Parámetros inválidos para la creación.' };
         }
         
         batch.set(finalEntityRef, entityData);
 
-        const caracterizacionRef = adminDb.doc(`caracterizaciones/${caracterizacionId}`);
+        const caracterizacionRef = adminDb.doc('caracterizaciones/' + caracterizacionId);
         batch.set(caracterizacionRef, {
             objetivo,
             alcance,
@@ -87,11 +109,11 @@ export async function createEntityAction(
         
         await batch.commit();
         
-        return { message: `Creado correctamente.` };
+        return { message: 'Creado correctamente.' };
 
     } catch (e: any) {
         console.error("Error creating entity:", e);
-        return { message: 'Error', error: `No se pudo crear la entidad: ${e.message}` };
+        return { message: 'Error', error: 'No se pudo crear la entidad: ' + e.message };
     }
 }
 
@@ -115,23 +137,23 @@ export async function deleteEntityAction(
         case 'area':
             if (!entityId) throw new Error("Parámetros de eliminación inválidos (falta entityId).");
             
-            const areaRef = adminDb.doc(`areas/${entityId}`);
-            const procesosQuery = adminDb.collection(`areas/${entityId}/procesos`);
+            const areaRef = adminDb.doc('areas/' + entityId);
+            const procesosQuery = adminDb.collection('areas/' + entityId + '/procesos');
             const procesosSnap = await procesosQuery.get();
 
             for (const procesoDoc of procesosSnap.docs) {
                 const subprocesosQuery = procesoDoc.ref.collection('subprocesos');
                 const subprocesosSnap = await subprocesosQuery.get();
                 for (const subDoc of subprocesosSnap.docs) {
-                    const caracterizacionSubRef = adminDb.doc(`caracterizaciones/subprocess-${subDoc.id}`);
+                    const caracterizacionSubRef = adminDb.doc('caracterizaciones/subprocess-' + subDoc.id);
                     batch.delete(caracterizacionSubRef);
                     batch.delete(subDoc.ref);
                 }
-                const caracterizacionProcRef = adminDb.doc(`caracterizaciones/process-${procesoDoc.id}`);
+                const caracterizacionProcRef = adminDb.doc('caracterizaciones/process-' + procesoDoc.id);
                 batch.delete(caracterizacionProcRef);
                 batch.delete(procesoDoc.ref);
             }
-            const caracterizacionAreaRef = adminDb.doc(`caracterizaciones/area-${entityId}`);
+            const caracterizacionAreaRef = adminDb.doc('caracterizaciones/area-' + entityId);
             batch.delete(caracterizacionAreaRef);
             batch.delete(areaRef);
             break;
@@ -139,16 +161,16 @@ export async function deleteEntityAction(
         case 'process':
             if (!entityId || !parentId) throw new Error("Parámetros de eliminación inválidos (falta entityId o parentId).");
 
-            const processRef = adminDb.doc(`areas/${parentId}/procesos/${entityId}`);
+            const processRef = adminDb.doc('areas/' + parentId + '/procesos/' + entityId);
             const subprocesosProcQuery = processRef.collection('subprocesos');
             const subprocesosProcSnap = await subprocesosProcQuery.get();
 
             for (const subDoc of subprocesosProcSnap.docs) {
-                const caracterizacionSubRef = adminDb.doc(`caracterizaciones/subprocess-${subDoc.id}`);
+                const caracterizacionSubRef = adminDb.doc('caracterizaciones/subprocess-' + subDoc.id);
                 batch.delete(caracterizacionSubRef);
                 batch.delete(subDoc.ref);
             }
-            const caracterizacionProcRef = adminDb.doc(`caracterizaciones/process-${entityId}`);
+            const caracterizacionProcRef = adminDb.doc('caracterizaciones/process-' + entityId);
             batch.delete(caracterizacionProcRef);
             batch.delete(processRef);
             break;
@@ -156,8 +178,8 @@ export async function deleteEntityAction(
         case 'subprocess':
             if (!entityId || !parentId || !grandParentId) throw new Error("Parámetros de eliminación inválidos (falta entityId, parentId o grandParentId).");
             
-            const subProcessRef = adminDb.doc(`areas/${grandParentId}/procesos/${parentId}/subprocesos/${entityId}`);
-            const caracterizacionSubRef = adminDb.doc(`caracterizaciones/subprocess-${entityId}`);
+            const subProcessRef = adminDb.doc('areas/' + grandParentId + '/procesos/' + parentId + '/subprocesos/' + entityId);
+            const caracterizacionSubRef = adminDb.doc('caracterizaciones/subprocess-' + entityId);
             batch.delete(caracterizacionSubRef);
             batch.delete(subProcessRef);
             break;
@@ -170,7 +192,7 @@ export async function deleteEntityAction(
     return { message: 'Elemento eliminado correctamente.' };
 
   } catch (e: any) {
-    let errorMessage = `No se pudo eliminar el elemento: ${e.message}`;
+    const errorMessage = 'No se pudo eliminar el elemento: ' + e.message;
     console.error('Error deleting entity:', e);
     return { message: 'Error', error: errorMessage };
   }
@@ -222,11 +244,11 @@ export async function updateEntityAction(
         let entityRef;
 
         if (entityType === 'area') {
-            entityRef = adminDb.doc(`areas/${entityId}`);
+            entityRef = adminDb.doc('areas/' + entityId);
         } else if (entityType === 'process' && parentId) {
-            entityRef = adminDb.doc(`areas/${parentId}/procesos/${entityId}`);
+            entityRef = adminDb.doc('areas/' + parentId + '/procesos/' + entityId);
         } else if (entityType === 'subprocess' && parentId && grandParentId) {
-            entityRef = adminDb.doc(`areas/${grandParentId}/procesos/${parentId}/subprocesos/${entityId}`);
+            entityRef = adminDb.doc('areas/' + grandParentId + '/procesos/' + parentId + '/subprocesos/' + entityId);
         } else {
             return { message: 'Error', error: 'Parámetros inválidos para la actualización.' };
         }
@@ -237,14 +259,14 @@ export async function updateEntityAction(
         const hasCaracterizacionData = objetivo !== undefined || alcance !== undefined || responsable !== undefined;
 
         if (hasCaracterizacionData) {
-            let caracterizacionId = `area-${entityId}`;
+            let caracterizacionId = 'area-' + entityId;
             if (entityType === 'process') {
-                caracterizacionId = `process-${entityId}`;
+                caracterizacionId = 'process-' + entityId;
             } else if (entityType === 'subprocess') {
-               caracterizacionId = `subproceso-${entityId}`;
+               caracterizacionId = 'subproceso-' + entityId;
             }
             
-            const caracterizacionRef = adminDb.doc(`caracterizaciones/${caracterizacionId}`);
+            const caracterizacionRef = adminDb.doc('caracterizaciones/' + caracterizacionId);
 
             if (allCaracterizacionFieldsEmpty) {
                  batch.delete(caracterizacionRef);
@@ -263,14 +285,13 @@ export async function updateEntityAction(
             }
         }
 
-
         await batch.commit();
         
-        return { message: `Cambios guardados correctamente.` };
+        return { message: 'Cambios guardados correctamente.' };
 
     } catch (e: any) {
         console.error("Error updating entity:", e);
-        return { message: 'Error', error: `No se pudo actualizar la entidad: ${e.message}` };
+        return { message: 'Error', error: 'No se pudo actualizar la entidad: ' + e.message };
     }
 }
 
@@ -292,12 +313,12 @@ export async function renameFolderAction(
   }
 
   try {
-    const folderRef = adminDb.doc(`folders/${folderId}`);
+    const folderRef = adminDb.doc('folders/' + folderId);
     await folderRef.update({ name: newName });
     return { message: 'Carpeta renombrada con éxito.' };
   } catch (e: any) {
     console.error("Error renaming folder:", e);
-    return { message: 'Error', error: `No se pudo renombrar la carpeta: ${e.message}` };
+    return { message: 'Error', error: 'No se pudo renombrar la carpeta: ' + e.message };
   }
 }
 
@@ -315,6 +336,7 @@ export async function seedProcessMapAction(): Promise<{ message: string; error?:
                 nombre: area.titulo, 
                 slug: slugify(area.titulo),
                 id: newAreaRef.id,
+                icono: getIconForArea(area.titulo),
                 createdAt: new Date()
             });
 
@@ -345,7 +367,7 @@ export async function seedProcessMapAction(): Promise<{ message: string; error?:
         return { message: 'Mapa de procesos restaurado con éxito.' };
     } catch (e: any) {
         console.error("Error seeding process map:", e);
-        return { message: 'Error', error: `No se pudo restaurar el mapa de procesos: ${e.message}` };
+        return { message: 'Error', error: 'No se pudo restaurar el mapa de procesos: ' + e.message };
     }
 }
 
@@ -386,7 +408,7 @@ export async function createFolderAction(prevState: any, formData: FormData): Pr
     return { message: 'Carpeta creada con éxito.' };
   } catch (e: any) {
     console.error("Error creating folder:", e);
-    return { message: 'Error', error: `No se pudo crear la carpeta: ${e.message}` };
+    return { message: 'Error', error: 'No se pudo crear la carpeta: ' + e.message };
   }
 }
 
@@ -401,9 +423,6 @@ export async function deleteFolderAction(folderId: string): Promise<{ success: b
 
     const filesQuery = adminDb.collection('documents').where('folderId', '==', folderId);
     const filesSnap = await filesQuery.get();
-    
-    // Note: Deleting from Storage is not included here as storage is a client-side SDK instance.
-    // This would require a separate setup for admin storage access.
     
     for (const fileDoc of filesSnap.docs) {
       batch.delete(fileDoc.ref);
@@ -424,7 +443,7 @@ export async function deleteFolderAction(folderId: string): Promise<{ success: b
 
 export async function uploadFileAndCreateDocument(formData: FormData): Promise<{ success: boolean; error?: string }> {
   const { db: adminDb } = await import('@/firebase/server-config');
-  const { storage } = await import('@/firebase/client-config'); // Storage needs client instance for web uploads
+  const { storage } = await import('@/firebase/client-config');
   if (!storage || !adminDb) {
     return { success: false, error: 'Firebase no está inicializado.' };
   }
@@ -553,7 +572,7 @@ export async function createUserAction(
   } catch (e: any) {
     console.error('Error creando usuario:', e);
     
-    let errorMessage = `No se pudo crear el usuario: ${e.message}`;
+    let errorMessage = 'No se pudo crear el usuario: ' + e.message;
     if (e.code === 'auth/email-already-exists') {
         errorMessage = 'El correo electrónico ya está en uso por otro usuario.';
     } else if (e.code === 'auth/invalid-password') {
@@ -584,10 +603,8 @@ export async function updateUserAction(
     }
     const currentUserData = currentUserSnap.data();
 
-    // If role is not provided (e.g., disabled field), use the existing role
     const roleFromForm = formData.get('role');
     const role = roleFromForm || currentUserData?.role;
-
 
     const payload = {
       userId: userId,
@@ -643,8 +660,8 @@ export async function updateUserAction(
     return { message: 'Usuario actualizado con éxito.' };
   } catch (e: any) {
     console.error('Error actualizando usuario:', e);
-    let errorMessage = `No se pudo actualizar el usuario: ${e.message}`;
-     if (e.code === 'auth/email-already-exists') {
+    let errorMessage = 'No se pudo actualizar el usuario: ' + e.message;
+    if (e.code === 'auth/email-already-exists') {
         errorMessage = 'El correo electrónico ya está en uso por otro usuario.';
     }
     return { message: 'Error', error: errorMessage };
@@ -694,7 +711,7 @@ export async function deleteUserAction(
     return { success: true };
   } catch (e: any) {
     console.error('Error eliminando usuario:', e);
-    return { success: false, error: `No se pudo eliminar el usuario: ${e.message}` };
+    return { success: false, error: 'No se pudo eliminar el usuario: ' + e.message };
   }
 }
 
@@ -720,7 +737,7 @@ export async function resetPasswordAction(userId: string): Promise<{ success: bo
     return { success: true, newPassword };
   } catch (e: any) {
     console.error('Error al restablecer la contraseña:', e);
-    return { success: false, error: `No se pudo restablecer la contraseña: ${e.message}` };
+    return { success: false, error: 'No se pudo restablecer la contraseña: ' + e.message };
   }
 }
 
@@ -771,8 +788,6 @@ export async function loginAction(
     }
 
     if (userData.tempPassword !== password) {
-       // Even if tempPassword doesn't match, we return the user's email.
-       // The client will then try to sign in with the provided password against Firebase Auth.
        return {
         status: "error", 
         error: "Cédula o contraseña incorrectos, o el usuario está inactivo.",
@@ -796,4 +811,42 @@ export async function loginAction(
       error: "Ocurrió un error en el servidor. Por favor, inténtelo de nuevo.",
     };
   }
+}
+
+export async function migrateAreaIconsAction(force = false): Promise<{ message: string; error?: string }> {
+    const { db: adminDb } = await import('@/firebase/server-config');
+    if (!adminDb) return { message: 'Error', error: 'Firestore Admin no está inicializado.' };
+
+    try {
+        const areasRef = adminDb.collection('areas');
+        const snapshot = await areasRef.get();
+
+        if (snapshot.empty) {
+            return { message: 'No hay áreas para migrar.' };
+        }
+
+        const batch = adminDb.batch();
+        let updatedCount = 0;
+
+        snapshot.docs.forEach(doc => {
+            const areaData = doc.data();
+            if (areaData.nombre && (force || !areaData.icono)) {
+                const icon = getIconForArea(areaData.nombre);
+                batch.update(doc.ref, { icono: icon });
+                updatedCount++;
+            }
+        });
+
+        if (updatedCount === 0) {
+            return { message: force ? 'No se encontraron áreas para actualizar.' : 'Todas las áreas ya tienen un icono.' };
+        }
+
+        await batch.commit();
+        const action = force ? 'forzó la actualización de' : 'migraron';
+        return { message: `Se ${action} ${updatedCount} iconos de área con éxito.` };
+
+    } catch (e: any) {
+        console.error("Error migrating area icons:", e);
+        return { message: 'Error', error: 'No se pudo migrar los iconos: ' + e.message };
+    }
 }

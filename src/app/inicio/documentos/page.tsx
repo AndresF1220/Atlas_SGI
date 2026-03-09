@@ -3,33 +3,20 @@
 
 import { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Building, ShieldCheck, Users, Briefcase, Shield, CheckCircle, Gavel, AlertTriangle, Megaphone, PlusCircle, Loader2 } from "lucide-react";
+import * as Icons from "lucide-react";
 import { useAreas } from '@/hooks/use-areas-data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { AddEntityForm } from '@/components/dashboard/AddEntityForm';
 import { useToast } from '@/hooks/use-toast';
-import { seedProcessMapAction } from '@/app/actions';
+import { seedProcessMapAction, migrateAreaIconsAction } from '@/app/actions';
 import { EntityOptionsDropdown } from '@/components/dashboard/EntityOptionsDropdown';
 import { useAuth } from '@/lib/auth';
-
-const iconMap: { [key: string]: React.ElementType } = {
-    'direccion-administrativa-y-financiera': Building,
-    'direccion-de-gestion-del-riesgo': ShieldCheck,
-    'direccion-de-participacion-intercultural': Users,
-    'contratacion': Briefcase,
-    'control-interno': Shield,
-    'gestion-de-calidad': CheckCircle,
-    'asesoria-juridica': Gavel,
-    'sarlaft': AlertTriangle,
-    'comunicaciones': Megaphone,
-    'default': Building,
-};
 
 const AreaCard = ({ area }: { area: any }) => {
     const { toast } = useToast();
     const { userRole } = useAuth();
-    const Icon = iconMap[area.slug] || iconMap['default'];
+    const Icon = (area.icono && (Icons as any)[area.icono]) ? (Icons as any)[area.icono] : Icons.Building;
 
     const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
         if ((e.target as HTMLElement).closest('[data-radix-dropdown-menu-trigger]')) {
@@ -113,6 +100,19 @@ export default function RepositoryAreasPage() {
     ensureSeeded();
   }, [isLoading, areas, toast, userRole, isSeedingAction]);
 
+  useEffect(() => {
+    const migrateIcons = async () => {
+      if (userRole === 'superadmin' && areas && areas.some(area => !area.icono)) {
+        await migrateAreaIconsAction();
+        toast({
+          title: 'Migración de Iconos Completa',
+          description: 'Se han asignado iconos a las áreas que no tenían.',
+        });
+      }
+    };
+    migrateIcons();
+  }, [areas, userRole, toast]);
+
 
   const showLoadingState = isLoading || isSeedingAction;
 
@@ -130,7 +130,7 @@ export default function RepositoryAreasPage() {
                 onOpenChange={setIsAdding}
             >
                 <Button onClick={() => setIsAdding(true)}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
+                    <Icons.PlusCircle className="mr-2 h-4 w-4" />
                     Agregar Área
                 </Button>
             </AddEntityForm>
