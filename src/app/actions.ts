@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { getAuth } from 'firebase-admin/auth';
 import { slugify } from '@/lib/slug';
 import { SEED_AREAS } from '@/data/seed-map';
-import { ref, deleteObject, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 
 const iconMap: { [key: string]: string } = {
@@ -25,6 +25,17 @@ const getIconForArea = (areaName: string): string => {
   return iconMap[normalizedAreaName] || iconMap["default"];
 };
 
+const areaTypeMap: { [key: string]: string } = {
+  "Dirección Administrativa y Financiera": "direccion",
+  "Dirección de Gestión del Riesgo": "direccion",
+  "Dirección de Participación Intercultural": "direccion",
+  "Gestión de Calidad": "transversal",
+  "Asesoría Jurídica": "transversal",
+  "Comunicaciones": "transversal",
+  "SARLAFT": "transversal",
+  "Control Interno": "transversal",
+  "Contratación": "transversal",
+};
 
 const createSchema = z.object({
   name: z.string().min(3, 'Debe ingresar un nombre de al menos 3 caracteres.'),
@@ -440,7 +451,6 @@ export async function deleteFolderAction(folderId: string): Promise<{ success: b
   }
 }
 
-
 export async function uploadFileAndCreateDocument(formData: FormData): Promise<{ success: boolean; error?: string }> {
   const { db: adminDb } = await import('@/firebase/server-config');
   const { storage } = await import('@/firebase/client-config');
@@ -813,7 +823,7 @@ export async function loginAction(
   }
 }
 
-export async function migrateAreaIconsAction(force = false): Promise<{ message: string; error?: string }> {
+export async function migrateAreaIconsAction(): Promise<{ message: string; error?: string }> {
     const { db: adminDb } = await import('@/firebase/server-config');
     if (!adminDb) return { message: 'Error', error: 'Firestore Admin no está inicializado.' };
 
@@ -830,23 +840,49 @@ export async function migrateAreaIconsAction(force = false): Promise<{ message: 
 
         snapshot.docs.forEach(doc => {
             const areaData = doc.data();
-            if (areaData.nombre && (force || !areaData.icono)) {
-                const icon = getIconForArea(areaData.nombre);
-                batch.update(doc.ref, { icono: icon });
-                updatedCount++;
-            }
+            const icon = getIconForArea(areaData.nombre);
+            batch.update(doc.ref, { icono: icon });
+            updatedCount++;
         });
 
-        if (updatedCount === 0) {
-            return { message: force ? 'No se encontraron áreas para actualizar.' : 'Todas las áreas ya tienen un icono.' };
-        }
-
         await batch.commit();
-        const action = force ? 'forzó la actualización de' : 'migraron';
-        return { message: `Se ${action} ${updatedCount} iconos de área con éxito.` };
+        return { message: 'Se migraron ' + updatedCount + ' iconos de área con éxito.' };
 
     } catch (e: any) {
         console.error("Error migrating area icons:", e);
         return { message: 'Error', error: 'No se pudo migrar los iconos: ' + e.message };
+    }
+}
+
+export async function migrateAreaTypesAction(): Promise<{ message: string; error?: string }> {
+    const { db: adminDb } = await import('@/firebase/server-config');
+    if (!adminDb) return { message: 'Error', error: 'Firestore Admin no está inicializado.' };
+
+    try {
+        const areasRef = adminDb.collection('areas');
+        const snapshot = await areasRef.get();
+
+        if (snapshot.empty) {
+            return { message: 'No hay áreas para migrar.' };
+        }
+
+        const batch = adminDb.batch();
+        let updatedCount = 0;
+
+        snapshot.docs.forEach(doc => {
+            const areaData = doc.data();
+            const tipo = areaTypeMap[areaData.nombre];
+            if (tipo) {
+                batch.update(doc.ref, { tipo });
+                updatedCount++;
+            }
+        });
+
+        await batch.commit();
+        return { message: 'Se migraron ' + updatedCount + ' tipos de área con éxito.' };
+
+    } catch (e: any) {
+        console.error("Error migrating area types:", e);
+        return { message: 'Error', error: 'No se pudo migrar los tipos: ' + e.message };
     }
 }

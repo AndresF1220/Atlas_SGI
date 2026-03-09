@@ -20,6 +20,7 @@ export type Area = {
     nombre: string;
     slug: string;
     icono: string;
+    tipo?: string;
 }
 
 export interface CaracterizacionData {

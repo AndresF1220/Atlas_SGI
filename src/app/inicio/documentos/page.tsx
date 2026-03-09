@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { AddEntityForm } from '@/components/dashboard/AddEntityForm';
 import { useToast } from '@/hooks/use-toast';
-import { seedProcessMapAction, migrateAreaIconsAction } from '@/app/actions';
+import { seedProcessMapAction, migrateAreaIconsAction, migrateAreaTypesAction } from '@/app/actions';
 import { EntityOptionsDropdown } from '@/components/dashboard/EntityOptionsDropdown';
 import { useAuth } from '@/lib/auth';
 
@@ -106,6 +106,19 @@ export default function RepositoryAreasPage() {
       }
     };
     migrateIcons();
+  }, [areas, userRole, toast]);
+
+  useEffect(() => {
+    const migrateTypes = async () => {
+      if (userRole === 'superadmin' && areas && areas.some(area => !area.tipo)) {
+        await migrateAreaTypesAction();
+        toast({
+          title: 'Migración de Tipos de Área Completa',
+          description: 'Se han asignado los tipos a las áreas que no tenían.',
+        });
+      }
+    };
+    migrateTypes();
   }, [areas, userRole, toast]);
 
 
