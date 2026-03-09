@@ -46,11 +46,6 @@ const AreaCard = ({ area }: { area: any }) => {
                 <CardHeader className="p-0">
                     <CardTitle className="font-headline text-xl">{area.nombre}</CardTitle>
                 </CardHeader>
-                <CardContent className="p-0 mt-2">
-                    <CardDescription>
-                        Gestión de {area.nombre.toLowerCase()}
-                    </CardDescription>
-                </CardContent>
             </Card>
              {userRole === 'superadmin' && (
                 <div className="absolute top-2 right-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
