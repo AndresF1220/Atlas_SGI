@@ -23,7 +23,6 @@ interface AddEntityFormProps {
   entityType: 'area' | 'process' | 'subprocess';
   parentId?: string;
   grandParentId?: string;
-  additionalData?: { [key: string]: string };
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   children: React.ReactNode;
@@ -43,7 +42,6 @@ export function AddEntityForm({
   entityType,
   parentId,
   grandParentId,
-  additionalData,
   isOpen,
   onOpenChange,
   children,
@@ -102,12 +100,8 @@ export function AddEntityForm({
                 </div>
                 
                 <input type="hidden" name="entityType" value={entityType} />
-                {entityType === 'area' && <input type="hidden" name="type" value="area" />}
                 {parentId && <input type="hidden" name="parentId" value={parentId} />}
                 {grandParentId && <input type="hidden" name="grandParentId" value={grandParentId} />}
-                {additionalData && Object.entries(additionalData).map(([key, value]) => (
-                    <input type="hidden" name={key} value={value} key={key} />
-                ))}
             </div>
             <DialogFooter>
                 <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>

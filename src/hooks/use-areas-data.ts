@@ -28,6 +28,9 @@ export interface CaracterizacionData {
   alcance: string;
   responsable: string;
   editable?: boolean;
+  codigo?: string;
+  version?: string;
+  tipoProceso?: string;
 }
 
 export function useAreas() {
@@ -84,4 +87,43 @@ export function useCaracterizacion(caracterizacionId: string | null) {
     const { data, isLoading, error } = useDoc(caracterizacionRef);
     const caracterizacion = data as CaracterizacionData | null;
     return { caracterizacion, isLoading, error };
+}
+
+export function useEntityName(
+    entityId: string | null,
+    entityType: 'area' | 'proceso' | 'subproceso' | undefined,
+    areaId?: string | null, // Needed for procesos and subprocesos
+    procesoId?: string | null // Needed for subprocesos
+) {
+    const firestore = useFirestore();
+
+    const docRef = useMemoFirebase(() => {
+        if (!firestore || !entityId || !entityType) return null;
+
+        let path: string | null = null;
+        switch (entityType) {
+            case 'area':
+                path = `areas/${entityId}`;
+                break;
+            case 'proceso':
+                if (!areaId) return null; // Requires parent areaId
+                path = `areas/${areaId}/procesos/${entityId}`;
+                break;
+            case 'subproceso':
+                if (!areaId || !procesoId) return null; // Requires parent areaId and procesoId
+                path = `areas/${areaId}/procesos/${procesoId}/subprocesos/${entityId}`;
+                break;
+        }
+        
+        if (!path) return null;
+        return doc(firestore, path);
+    }, [firestore, entityId, entityType, areaId, procesoId]);
+
+    const { data, isLoading, error } = useDoc(docRef);
+
+    return { 
+        entityName: data?.nombre || '', 
+        isLoading, 
+        error 
+    };
 }

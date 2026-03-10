@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { AddEntityForm } from '@/components/dashboard/AddEntityForm';
 import { Skeleton } from '@/components/ui/skeleton';
-import { EntityOptionsDropdown } from '@/components/dashboard/EntityOptionsDropdown';
 import { useAuth } from '@/lib/auth';
 
 export default function AreaIdPage() {
@@ -25,7 +24,6 @@ export default function AreaIdPage() {
   if (!areaId || isLoading) {
     return (
         <div className="flex flex-col gap-8">
-            <Skeleton className="h-10 w-1/2" />
             <Skeleton className="h-40 w-full" />
             <Skeleton className="h-10 w-1/4" />
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -48,37 +46,27 @@ export default function AreaIdPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex justify-between items-center w-full">
-        <h1 className="text-3xl font-bold tracking-tight font-headline">{area.nombre}</h1>
-         <div className="flex items-center gap-2">
-            {userRole === 'superadmin' && (
-                <AddEntityForm 
-                    entityType="process"
-                    parentId={area.id}
-                    isOpen={isAdding}
-                    onOpenChange={setIsAdding}
-                >
-                    <Button>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Agregar Proceso
-                    </Button>
-                </AddEntityForm>
-            )}
-            {userRole === 'superadmin' && (
-                <EntityOptionsDropdown
-                    entityId={area.id}
-                    entityType="area"
-                    entityName={area.nombre}
-                    redirectOnDelete="/inicio/documentos"
-                />
-            )}
-        </div>
-      </div>
-
       <CaracterizacionPanel idEntidad={area.id} tipo="area" />
 
        <div className="flex flex-col gap-4">
-          <h2 className="text-2xl font-bold tracking-tight font-headline">Procesos</h2>
+          <div className="flex justify-between items-center w-full">
+            <h2 className="text-2xl font-bold tracking-tight font-headline">Procesos</h2>
+            <div className="flex items-center gap-2">
+                {userRole === 'superadmin' && (
+                    <AddEntityForm 
+                        entityType="process"
+                        parentId={area.id}
+                        isOpen={isAdding}
+                        onOpenChange={setIsAdding}
+                    >
+                        <Button>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Agregar Proceso
+                        </Button>
+                    </AddEntityForm>
+                )}
+            </div>
+          </div>
           <ProcesoCards areaId={area.id} />
        </div>
        

@@ -38,13 +38,9 @@ const areaTypeMap: { [key: string]: string } = {
 
 const createSchema = z.object({
   name: z.string().min(3, 'Debe ingresar un nombre de al menos 3 caracteres.'),
-  objetivo: z.string().optional().default(''),
-  alcance: z.string().optional().default(''),
-  responsable: z.string().optional().default(''),
-  type: z.enum(['area', 'process', 'subprocess']),
+  entityType: z.enum(['area', 'process', 'subprocess']),
   parentId: z.string().optional(),
   grandParentId: z.string().optional(),
-  tipo: z.string().optional(),
 });
 
 export async function createEntityAction(
@@ -54,17 +50,11 @@ export async function createEntityAction(
     const { db: adminDb } = await import('@/firebase/server-config');
     if (!adminDb) return { message: 'Error', error: 'Firestore Admin no está inicializado.' };
 
-    const s = (v: any) => (typeof v === 'string' ? v.trim() : '');
-    
     const payload = {
-        name: s(formData.get('name')),
-        objetivo: s(formData.get('objetivo')),
-        alcance: s(formData.get('alcance')),
-        responsable: s(formData.get('responsable')),
-        type: s(formData.get('type')) as 'area' | 'process' | 'subprocess',
-        parentId: s(formData.get('parentId')),
-        grandParentId: s(formData.get('grandParentId')),
-        tipo: s(formData.get('tipo')),
+        name: formData.get('name') as string,
+        entityType: formData.get('entityType') as 'area' | 'process' | 'subprocess',
+        parentId: formData.get('parentId') as string | undefined,
+        grandParentId: formData.get('grandParentId') as string | undefined,
     };
     
     const validatedFields = createSchema.safeParse(payload);
@@ -75,58 +65,97 @@ export async function createEntityAction(
         return { message: 'Validation failed', error: errorMessages.join(' ') || 'Debe ingresar un nombre.' };
     }
 
-    const { name, objetivo, alcance, responsable, type, parentId, grandParentId, tipo } = validatedFields.data;
+    const { name, entityType, parentId, grandParentId } = validatedFields.data;
 
     try {
-        const batch = adminDb.batch();
+        const newId = adminDb.collection('temp').doc().id; // Firestore-compatible ID
 
         const entityData: any = {
+            id: newId,
             nombre: name,
             slug: slugify(name),
             createdAt: new Date(),
         };
         
-        if (type === 'area') {
+        let entityRef;
+
+        if (entityType === 'area') {
             entityData.icono = getIconForArea(name);
-            if (tipo) entityData.tipo = tipo;
-        }
-        
-        const tempRef = adminDb.collection('temp').doc();
-        entityData.id = tempRef.id;
-
-        let finalEntityRef;
-        let caracterizacionId = '';
-
-        if (type === 'area') {
-            finalEntityRef = adminDb.doc('areas/' + tempRef.id);
-            caracterizacionId = 'area-' + tempRef.id;
-        } else if (type === 'process' && parentId) {
-            finalEntityRef = adminDb.doc('areas/' + parentId + '/procesos/' + tempRef.id);
-            caracterizacionId = 'process-' + tempRef.id;
-        } else if (type === 'subprocess' && parentId && grandParentId) {
-            finalEntityRef = adminDb.doc('areas/' + grandParentId + '/procesos/' + parentId + '/subprocesos/' + tempRef.id);
-            caracterizacionId = 'subproceso-' + tempRef.id;
+            entityRef = adminDb.doc(`areas/${newId}`);
+        } else if (entityType === 'process' && parentId) {
+            entityRef = adminDb.doc(`areas/${parentId}/procesos/${newId}`);
+        } else if (entityType === 'subprocess' && parentId && grandParentId) {
+            entityRef = adminDb.doc(`areas/${grandParentId}/procesos/${parentId}/subprocesos/${newId}`);
         } else {
             return { message: 'Error', error: 'Parámetros inválidos para la creación.' };
         }
         
-        batch.set(finalEntityRef, entityData);
-
-        const caracterizacionRef = adminDb.doc('caracterizaciones/' + caracterizacionId);
-        batch.set(caracterizacionRef, {
-            objetivo,
-            alcance,
-            responsable,
-            fechaActualizacion: new Date(),
-        });
+        await entityRef.set(entityData);
         
-        await batch.commit();
-        
-        return { message: 'Creado correctamente.' };
+        const typeName = entityType === 'area' ? 'Área' : entityType === 'process' ? 'Proceso' : 'Subproceso';
+        return { message: `${typeName} creado correctamente.` };
 
     } catch (e: any) {
         console.error("Error creating entity:", e);
         return { message: 'Error', error: 'No se pudo crear la entidad: ' + e.message };
+    }
+}
+
+const renameSchema = z.object({
+    entityId: z.string(),
+    entityType: z.enum(['process', 'subprocess']),
+    parentId: z.string(),
+    grandParentId: z.string().optional(),
+    name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres.'),
+});
+
+export async function renameEntityAction(
+    prevState: any,
+    formData: FormData,
+): Promise<{ message: string; error?: string }> {
+    const { db: adminDb } = await import('@/firebase/server-config');
+    if (!adminDb) return { message: 'Error', error: 'Firestore Admin no está inicializado.' };
+
+    const payload = {
+        entityId: formData.get('entityId') as string,
+        entityType: formData.get('entityType') as 'process' | 'subprocess',
+        parentId: formData.get('parentId') as string,
+        grandParentId: formData.get('grandParentId') as string | undefined,
+        name: formData.get('name') as string,
+    };
+
+    const validatedFields = renameSchema.safeParse(payload);
+
+    if (!validatedFields.success) {
+        const errors = validatedFields.error.flatten().fieldErrors;
+        const errorMessage = Object.values(errors).map(e => e?.join(', ')).join(' ');
+        return { message: 'Error de validación', error: errorMessage };
+    }
+
+    const { entityId, entityType, parentId, grandParentId, name } = validatedFields.data;
+
+    try {
+        let entityRef;
+
+        if (entityType === 'process') {
+            entityRef = adminDb.doc(`areas/${parentId}/procesos/${entityId}`);
+        } else if (entityType === 'subprocess' && grandParentId) {
+            entityRef = adminDb.doc(`areas/${grandParentId}/procesos/${parentId}/subprocesos/${entityId}`);
+        } else {
+            return { message: 'Error', error: 'Parámetros inválidos para renombrar.' };
+        }
+
+        await entityRef.update({
+            nombre: name,
+            slug: slugify(name),
+        });
+
+        const typeName = entityType === 'process' ? 'Proceso' : 'Subproceso';
+        return { message: `${typeName} renombrado con éxito.` };
+
+    } catch (e: any) {
+        console.error("Error renaming entity:", e);
+        return { message: 'Error', error: 'No se pudo renombrar la entidad: ' + e.message };
     }
 }
 
@@ -208,103 +237,6 @@ export async function deleteEntityAction(
     console.error('Error deleting entity:', e);
     return { message: 'Error', error: errorMessage };
   }
-}
-
-const updateSchema = z.object({
-  entityId: z.string(),
-  entityType: z.enum(['area', 'process', 'subprocess']),
-  parentId: z.string().optional(),
-  grandParentId: z.string().optional(),
-  name: z.string().min(3, 'El nombre debe tener al menos 3 caracteres.'),
-  objetivo: z.string().optional(),
-  alcance: z.string().optional(),
-  responsable: z.string().optional(),
-});
-
-export async function updateEntityAction(
-  prevState: any,
-  formData: FormData
-): Promise<{ message: string; error?: string }> {
-    const { db: adminDb } = await import('@/firebase/server-config');
-    if (!adminDb) return { message: 'Error', error: 'Firestore Admin no está inicializado.' };
-
-    const s = (v: any) => (v === null || v === undefined ? undefined : String(v));
-
-    const payload = {
-        entityId: s(formData.get('entityId')),
-        entityType: s(formData.get('entityType')),
-        parentId: s(formData.get('parentId')),
-        grandParentId: s(formData.get('grandParentId')),
-        name: s(formData.get('name')),
-        objetivo: s(formData.get('objetivo')),
-        alcance: s(formData.get('alcance')),
-        responsable: s(formData.get('responsable')),
-    };
-
-    const validatedFields = updateSchema.safeParse(payload);
-
-    if (!validatedFields.success) {
-        const errors = validatedFields.error.flatten().fieldErrors;
-        return { message: 'Validation failed', error: errors.name?.join(', ') || 'Error de validación.' };
-    }
-    
-    const { entityId, entityType, parentId, grandParentId, name, objetivo, alcance, responsable } = validatedFields.data;
-
-    try {
-        const batch = adminDb.batch();
-
-        let entityRef;
-
-        if (entityType === 'area') {
-            entityRef = adminDb.doc('areas/' + entityId);
-        } else if (entityType === 'process' && parentId) {
-            entityRef = adminDb.doc('areas/' + parentId + '/procesos/' + entityId);
-        } else if (entityType === 'subprocess' && parentId && grandParentId) {
-            entityRef = adminDb.doc('areas/' + grandParentId + '/procesos/' + parentId + '/subprocesos/' + entityId);
-        } else {
-            return { message: 'Error', error: 'Parámetros inválidos para la actualización.' };
-        }
-
-        batch.update(entityRef, { nombre: name, slug: slugify(name) });
-        
-        const allCaracterizacionFieldsEmpty = !objetivo && !alcance && !responsable;
-        const hasCaracterizacionData = objetivo !== undefined || alcance !== undefined || responsable !== undefined;
-
-        if (hasCaracterizacionData) {
-            let caracterizacionId = 'area-' + entityId;
-            if (entityType === 'process') {
-                caracterizacionId = 'process-' + entityId;
-            } else if (entityType === 'subprocess') {
-               caracterizacionId = 'subproceso-' + entityId;
-            }
-            
-            const caracterizacionRef = adminDb.doc('caracterizaciones/' + caracterizacionId);
-
-            if (allCaracterizacionFieldsEmpty) {
-                 batch.delete(caracterizacionRef);
-            } else {
-                const caracterizacionData: any = { fechaActualizacion: new Date() };
-                if (objetivo !== undefined) caracterizacionData.objetivo = objetivo;
-                if (alcance !== undefined) caracterizacionData.alcance = alcance;
-                if (responsable !== undefined) caracterizacionData.responsable = responsable;
-                
-                const caracterizacionSnap = await caracterizacionRef.get();
-                 if (caracterizacionSnap.exists) {
-                    batch.update(caracterizacionRef, caracterizacionData);
-                } else {
-                    batch.set(caracterizacionRef, caracterizacionData);
-                }
-            }
-        }
-
-        await batch.commit();
-        
-        return { message: 'Cambios guardados correctamente.' };
-
-    } catch (e: any) {
-        console.error("Error updating entity:", e);
-        return { message: 'Error', error: 'No se pudo actualizar la entidad: ' + e.message };
-    }
 }
 
 export async function renameFolderAction(

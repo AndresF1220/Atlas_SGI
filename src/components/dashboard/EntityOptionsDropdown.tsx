@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useTransition, useMemo } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   DropdownMenu,
@@ -25,15 +25,13 @@ import { Button } from '@/components/ui/button';
 import { MoreVertical, Edit, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { deleteEntityAction } from '@/app/actions';
-import { EditEntityForm } from './EditEntityForm';
-import { useCaracterizacion } from '@/hooks/use-areas-data';
-
+import { RenameEntityForm } from './RenameEntityForm';
 
 interface EntityOptionsDropdownProps {
   entityId: string;
   entityName: string;
-  entityType: 'area' | 'process' | 'subprocess';
-  parentId?: string;
+  entityType: 'process' | 'subprocess';
+  parentId: string;
   grandParentId?: string;
   redirectOnDelete?: string;
 }
@@ -46,27 +44,14 @@ export function EntityOptionsDropdown({
   grandParentId,
   redirectOnDelete,
 }: EntityOptionsDropdownProps) {
-  const [isEditing, setIsEditing] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const router = useRouter();
 
-  const caracterizacionId = useMemo(() => {
-    switch (entityType) {
-      case 'area': return `area-${entityId}`;
-      case 'process': return `process-${entityId}`;
-      case 'subprocess': return `subprocess-${entityId}`;
-      default: return null;
-    }
-  }, [entityType, entityId]);
-
-  const { caracterizacion, isLoading: isLoadingCaracterizacion } = useCaracterizacion(caracterizacionId);
-  
   const getDeleteMessage = () => {
     switch (entityType) {
-      case 'area':
-        return `Vas a eliminar "${entityName}". Esta acción no se puede deshacer. Todos los procesos, subprocesos y documentos asociados también serán eliminados.`;
       case 'process':
         return `Vas a eliminar "${entityName}". Esta acción no se puede deshacer. Todos los subprocesos y documentos asociados también serán eliminados.`;
       case 'subprocess':
@@ -76,9 +61,9 @@ export function EntityOptionsDropdown({
     }
   };
   
-  const handleEditClick = (e: Event) => {
+  const handleRenameClick = (e: Event) => {
     e.preventDefault();
-    setIsEditing(true);
+    setIsRenaming(true);
   }
   
   const handleDeleteClick = (e: Event) => {
@@ -130,9 +115,9 @@ export function EntityOptionsDropdown({
         <DropdownMenuContent align="end" onClick={(e) => { e.stopPropagation(); }}>
           <DropdownMenuLabel>Opciones</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={handleEditClick}>
+          <DropdownMenuItem onSelect={handleRenameClick}>
             <Edit className="mr-2 h-4 w-4" />
-            <span>Editar</span>
+            <span>Renombrar</span>
           </DropdownMenuItem>
           <DropdownMenuItem onSelect={handleDeleteClick} className="text-destructive focus:text-destructive focus:bg-destructive/10">
             <Trash2 className="mr-2 h-4 w-4" />
@@ -141,23 +126,15 @@ export function EntityOptionsDropdown({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <EditEntityForm
+      <RenameEntityForm
         entityType={entityType}
         entityId={entityId}
+        currentName={entityName}
         parentId={parentId}
         grandParentId={grandParentId}
-        isOpen={isEditing}
-        onOpenChange={setIsEditing}
-        initialData={{
-          name: entityName,
-          objetivo: caracterizacion?.objetivo || '',
-          alcance: caracterizacion?.alcance || '',
-          responsable: caracterizacion?.responsable || '',
-        }}
-      >
-        {/* The trigger is inside the DropdownMenuItem */}
-        <div />
-      </EditEntityForm>
+        isOpen={isRenaming}
+        onOpenChange={setIsRenaming}
+      />
       
       <AlertDialog open={isDeleting} onOpenChange={setIsDeleting}>
         <AlertDialogContent>

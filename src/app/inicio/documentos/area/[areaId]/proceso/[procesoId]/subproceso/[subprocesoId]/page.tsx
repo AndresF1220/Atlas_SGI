@@ -6,7 +6,6 @@ import CaracterizacionPanel from '@/components/dashboard/CaracterizacionPanel';
 import RepoEmbed from '@/components/dashboard/RepoEmbed';
 import { useSubproceso, useProceso, useArea } from '@/hooks/use-areas-data';
 import { Skeleton } from '@/components/ui/skeleton';
-import { EntityOptionsDropdown } from '@/components/dashboard/EntityOptionsDropdown';
 import { useAuth } from '@/lib/auth';
 
 export default function SubprocesoIdPage() {
@@ -14,7 +13,6 @@ export default function SubprocesoIdPage() {
   const areaId = params.areaId as string;
   const procesoId = params.procesoId as string;
   const subprocesoId = params.subprocesoId as string;
-  const { userRole } = useAuth();
 
   // Hooks to fetch data
   const { area, isLoading: isLoadingArea } = useArea(areaId);
@@ -27,7 +25,6 @@ export default function SubprocesoIdPage() {
   if (isLoading || !areaId || !procesoId || !subprocesoId) {
     return (
         <div className="flex flex-col gap-8">
-            <Skeleton className="h-10 w-2/3" />
             <Skeleton className="h-40 w-full" />
             <Skeleton className="h-96 w-full" />
         </div>
@@ -46,23 +43,7 @@ export default function SubprocesoIdPage() {
   
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex justify-between items-center w-full">
-        <h1 className="text-3xl font-bold tracking-tight font-headline capitalize">{subproceso.nombre}</h1>
-        <div className="flex items-center gap-2">
-        {userRole === 'superadmin' && (
-            <EntityOptionsDropdown
-                entityId={subproceso.id}
-                entityType="subprocess"
-                entityName={subproceso.nombre}
-                parentId={proceso.id}
-                grandParentId={area.id}
-                redirectOnDelete={`/inicio/documentos/area/${area.id}/proceso/${proceso.id}`}
-            />
-        )}
-        </div>
-      </div>
-
-      <CaracterizacionPanel idEntidad={subproceso.id} tipo="subproceso" />
+      <CaracterizacionPanel idEntidad={subproceso.id} tipo="subproceso" areaId={area.id} procesoId={proceso.id} />
       
       <RepoEmbed areaId={areaId} procesoId={procesoId} subprocesoId={subproceso.id} />
     </div>

@@ -11,7 +11,6 @@ import { PlusCircle } from 'lucide-react';
 import { useState } from 'react';
 import { AddEntityForm } from '@/components/dashboard/AddEntityForm';
 import { Skeleton } from '@/components/ui/skeleton';
-import { EntityOptionsDropdown } from '@/components/dashboard/EntityOptionsDropdown';
 import { useAuth } from '@/lib/auth';
 
 export default function ProcesoIdPage() {
@@ -28,7 +27,6 @@ export default function ProcesoIdPage() {
   if (!areaId || !procesoId || isLoadingArea || isLoadingProceso) {
     return (
         <div className="flex flex-col gap-8">
-            <Skeleton className="h-10 w-1/2" />
             <Skeleton className="h-40 w-full" />
             <Skeleton className="h-10 w-1/4" />
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -51,39 +49,28 @@ export default function ProcesoIdPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex justify-between items-center w-full">
-        <h1 className="text-3xl font-bold tracking-tight font-headline">{proceso.nombre}</h1>
-        <div className="flex items-center gap-2">
-            {userRole === 'superadmin' && (
-                <AddEntityForm 
-                    entityType="subprocess"
-                    parentId={proceso.id}
-                    grandParentId={area.id}
-                    isOpen={isAdding}
-                    onOpenChange={setIsAdding}
-                >
-                    <Button>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Agregar Subproceso
-                    </Button>
-                </AddEntityForm>
-            )}
-             {userRole === 'superadmin' && (
-                <EntityOptionsDropdown
-                    entityId={proceso.id}
-                    entityType="process"
-                    entityName={proceso.nombre}
-                    parentId={area.id}
-                    redirectOnDelete={`/inicio/documentos/area/${area.id}`}
-                />
-            )}
-        </div>
-      </div>
-
-      <CaracterizacionPanel idEntidad={proceso.id} tipo="proceso" />
+      <CaracterizacionPanel idEntidad={proceso.id} tipo="proceso" areaId={area.id} />
 
       <div className="flex flex-col gap-4">
-        <h2 className="text-2xl font-bold tracking-tight font-headline">Sub-procesos</h2>
+        <div className="flex justify-between items-center w-full">
+            <h2 className="text-2xl font-bold tracking-tight font-headline">Sub-procesos</h2>
+            <div className="flex items-center gap-2">
+                {userRole === 'superadmin' && (
+                    <AddEntityForm 
+                        entityType="subprocess"
+                        parentId={proceso.id}
+                        grandParentId={area.id}
+                        isOpen={isAdding}
+                        onOpenChange={setIsAdding}
+                    >
+                        <Button>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Agregar Subproceso
+                        </Button>
+                    </AddEntityForm>
+                )}
+            </div>
+        </div>
         <ProcesoCards areaId={areaId} procesoId={procesoId} />
       </div>
 
