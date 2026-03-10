@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -58,6 +57,8 @@ export default function CaracterizacionPanel({
   
   const settingsRef = useMemoFirebase(() => (firestore) ? doc(firestore, 'settings', 'organizational') : null, [firestore]);
   const { data: settings, isLoading: isSettingsLoading } = useDoc(settingsRef);
+  const companyRef = useMemoFirebase(() => (firestore) ? doc(firestore, 'settings', 'company') : null, [firestore]);
+  const { data: company, isLoading: isCompanyLoading } = useDoc(companyRef);
 
   const isDataEmpty = !caracterizacion || Object.values(caracterizacion).every(value => !value);
 
@@ -107,7 +108,7 @@ export default function CaracterizacionPanel({
             )}
         </CardHeader>
       <CardContent>
-        {loading || isSettingsLoading ? (
+        {loading || isSettingsLoading || isCompanyLoading ? (
            <div className="flex justify-center items-center h-60">
                 <Loader className="h-8 w-8 animate-spin text-primary" />
            </div>
@@ -127,8 +128,15 @@ export default function CaracterizacionPanel({
                     </div>
                     {/* Center: Titles */}
                     <div className="flex-grow">
-                        <h3 className="font-bold text-lg text-center">Dusakawi EPSI</h3>
-                        <p className="text-md text-muted-foreground text-center">{isEntityNameLoading ? 'Cargando...' : `${getTitleForType(tipo)}: ${entityName}`}</p>
+                        <h3 className="font-bold text-lg text-center">{company?.name || 'Dusakawi EPSI'}</h3>
+                        <p className="text-md text-center">
+                          {isEntityNameLoading ? 'Cargando...' : (
+                            <>
+                              <span className="font-semibold text-gray-900">{getTitleForType(tipo)}:</span>
+                              <span className="text-gray-900"> {entityName}</span>
+                            </>
+                          )}
+                        </p>
                     </div>
                     {/* Right: Metadata */}
                     <div>
@@ -170,13 +178,13 @@ export default function CaracterizacionPanel({
                         </p>
                     </div>
                 ) : (
-                    <div className="space-y-6 pt-6">
+                    <div className="space-y-4 pt-4">
                         <div className="space-y-2">
                             <h3 className="font-semibold flex items-center gap-2 text-lg">
                                 <Target className="h-5 w-5 text-primary" />
                                 Objetivo
                             </h3>
-                            <p className="text-muted-foreground whitespace-pre-wrap pl-7">
+                            <p className="text-gray-800 whitespace-pre-wrap pl-7">
                                 {caracterizacion?.objetivo || <em>No definido.</em>}
                             </p>
                         </div>
@@ -185,7 +193,7 @@ export default function CaracterizacionPanel({
                                 <User className="h-5 w-5 text-primary" />
                                 Responsable
                             </h3>
-                            <p className="text-muted-foreground pl-7">
+                            <p className="text-gray-800 whitespace-pre-wrap pl-7">
                                 {caracterizacion?.responsable || <em>No definido.</em>}
                             </p>
                         </div>
@@ -194,7 +202,7 @@ export default function CaracterizacionPanel({
                                 <GitBranch className="h-5 w-5 text-primary" />
                                 Alcance
                             </h3>
-                            <p className="text-muted-foreground whitespace-pre-wrap pl-7">
+                            <p className="text-gray-800 whitespace-pre-wrap pl-7">
                                 {caracterizacion?.alcance || <em>No definido.</em>}
                             </p>
                         </div>

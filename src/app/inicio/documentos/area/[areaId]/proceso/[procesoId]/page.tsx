@@ -52,7 +52,7 @@ export default function ProcesoIdPage() {
       <CaracterizacionPanel idEntidad={proceso.id} tipo="proceso" areaId={area.id} />
 
       <div className="flex flex-col gap-4">
-        <div className="flex justify-between items-center w-full">
+        <div className="flex justify-between items-center w-full border-b pb-2">
             <h2 className="text-2xl font-bold tracking-tight font-headline">Sub-procesos</h2>
             <div className="flex items-center gap-2">
                 {userRole === 'superadmin' && (

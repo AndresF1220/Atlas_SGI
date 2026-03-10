@@ -100,7 +100,16 @@ export default function CaracterizacionEditor({ entityId, entityType, onSaved, i
 
   const form = useForm<CaracterizacionFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: initialData,
+    defaultValues: {
+      ...initialData,
+      objetivo: initialData.objetivo || '',
+      alcance: initialData.alcance || '',
+      responsable: initialData.responsable || '',
+      codigo: initialData.codigo || '',
+      version: initialData.version || '',
+      tipoProceso: initialData.tipoProceso || '',
+      logoUrl: initialData.logoUrl || '',
+    },
   });
 
   const {
@@ -112,7 +121,16 @@ export default function CaracterizacionEditor({ entityId, entityType, onSaved, i
   
 
   useEffect(() => {
-    reset(initialData);
+    reset({
+      ...initialData,
+      objetivo: initialData.objetivo || '',
+      alcance: initialData.alcance || '',
+      responsable: initialData.responsable || '',
+      codigo: initialData.codigo || '',
+      version: initialData.version || '',
+      tipoProceso: initialData.tipoProceso || '',
+      logoUrl: initialData.logoUrl || '',
+    });
   }, [initialData, reset]);
 
   const onSubmit = async (data: CaracterizacionFormValues) => {
@@ -190,7 +208,7 @@ export default function CaracterizacionEditor({ entityId, entityType, onSaved, i
                 <FormItem>
                   <FormLabel>Código</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ej: DGR-001" {...field} />
+                    <Input placeholder="Ej: GCA" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -203,7 +221,7 @@ export default function CaracterizacionEditor({ entityId, entityType, onSaved, i
                 <FormItem>
                   <FormLabel>Versión</FormLabel>
                   <FormControl>
-                    <Input placeholder="Ej: 1.0" {...field} />
+                    <Input placeholder="Ej: 01" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -216,7 +234,7 @@ export default function CaracterizacionEditor({ entityId, entityType, onSaved, i
           render={({ field }) => (
             <FormItem>
               <FormLabel>Tipo de Proceso</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccione un tipo" />

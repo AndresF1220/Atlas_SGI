@@ -168,7 +168,8 @@ export default function RepoEmbed({
     );
   }, [firestore, areaId, procesoId, subprocesoId]);
 
-  const { data: allFolders, isLoading: isLoadingFolders } = useCollection<Folder>(foldersQuery);
+  const { data: allFoldersData, isLoading: isLoadingFolders } = useCollection(foldersQuery);
+  const allFolders = allFoldersData as Folder[] | null;
 
   const filesQuery = useMemoFirebase(() => {
     if (!firestore || !selectedFolder) return null;
@@ -178,7 +179,8 @@ export default function RepoEmbed({
     );
   }, [firestore, selectedFolder]);
 
-  const { data: files, isLoading: isLoadingFiles } = useCollection<File>(filesQuery);
+  const { data: filesData, isLoading: isLoadingFiles } = useCollection(filesQuery);
+  const files = filesData as File[] | null;
 
 
   const rootFolders = useMemo(() => {
@@ -316,9 +318,11 @@ export default function RepoEmbed({
 
   return (
     <>
-      <h2 className="text-2xl font-bold font-headline -mb-4">
-        Documentos
-      </h2>
+      <div className="border-b pb-2 -mb-2">
+          <h2 className="text-2xl font-bold font-headline">
+            Documentos
+          </h2>
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <Card className="lg:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between">
@@ -409,7 +413,7 @@ export default function RepoEmbed({
                         </TableCell>
                     </TableRow>
                 ) : files && files.length > 0 ? (
-                  files.map((file: File) => (
+                  files.map((file) => (
                     <TableRow key={file.id}>
                         <TableCell className="font-mono text-xs">{file.code}</TableCell>
                         <TableCell className="font-medium">{file.name}</TableCell>
