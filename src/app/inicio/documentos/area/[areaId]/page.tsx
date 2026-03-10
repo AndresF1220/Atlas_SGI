@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useParams } from 'next/navigation';
 import CaracterizacionPanel from '@/components/dashboard/CaracterizacionPanel';
 import ProcesoCards from '@/components/dashboard/ProcesoCards';
 import RepoEmbed from '@/components/dashboard/RepoEmbed';
-import { useArea } from '@/hooks/use-areas-data';
+import { useArea, useProcesos } from '@/hooks/use-areas-data';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
@@ -16,22 +15,25 @@ import { useAuth } from '@/lib/auth';
 export default function AreaIdPage() {
   const params = useParams();
   const areaId = params.areaId as string;
-  const { area, isLoading } = useArea(areaId);
+  const { area, isLoading: isLoadingArea } = useArea(areaId);
+  const { procesos, isLoading: isLoadingProcesos } = useProcesos(areaId);
   const { userRole } = useAuth();
   const [isAdding, setIsAdding] = useState(false);
 
-  // If params are not yet available or data is loading, show a loading state.
+  const isLoading = isLoadingArea || isLoadingProcesos;
+  const canAdd = userRole === 'superadmin' || userRole === 'admin';
+
   if (!areaId || isLoading) {
     return (
-        <div className="flex flex-col gap-8">
-            <Skeleton className="h-40 w-full" />
-            <Skeleton className="h-10 w-1/4" />
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <Skeleton className="h-48 w-full" />
-                <Skeleton className="h-48 w-full" />
-                <Skeleton className="h-48 w-full" />
-            </div>
+      <div className="flex flex-col gap-8">
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-10 w-1/4" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-48 w-full" />
         </div>
+      </div>
     );
   }
 
@@ -44,33 +46,44 @@ export default function AreaIdPage() {
     );
   }
 
+  const hasProcesos = procesos && procesos.length > 0;
+
   return (
     <div className="flex flex-col gap-8">
-      <CaracterizacionPanel idEntidad={area.id} tipo="area" />
+      <CaracterizacionPanel
+        idEntidad={area.id}
+        tipo="area"
+        showAddChildButton={!hasProcesos && canAdd}
+        onAddChildClick={() => setIsAdding(true)}
+      />
 
-       <div className="flex flex-col gap-4">
+      {canAdd && (
+        <AddEntityForm
+          entityType="process"
+          parentId={area.id}
+          isOpen={isAdding}
+          onOpenChange={setIsAdding}
+        />
+      )}
+
+      {hasProcesos && (
+        <div className="flex flex-col gap-4">
           <div className="flex justify-between items-center w-full border-b pb-2">
             <h2 className="text-2xl font-bold tracking-tight font-headline">Procesos</h2>
-            <div className="flex items-center gap-2">
-                {userRole === 'superadmin' && (
-                    <AddEntityForm 
-                        entityType="process"
-                        parentId={area.id}
-                        isOpen={isAdding}
-                        onOpenChange={setIsAdding}
-                    >
-                        <Button>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Agregar Proceso
-                        </Button>
-                    </AddEntityForm>
-                )}
-            </div>
+            {canAdd && (
+              <AddEntityForm entityType="process" parentId={area.id}>
+                <Button>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Agregar Proceso
+                </Button>
+              </AddEntityForm>
+            )}
           </div>
-          <ProcesoCards areaId={area.id} />
-       </div>
-       
-       <RepoEmbed areaId={area.id} />
+          <ProcesoCards areaId={area.id} procesos={procesos} />
+        </div>
+      )}
+
+      <RepoEmbed areaId={area.id} />
     </div>
   );
 }

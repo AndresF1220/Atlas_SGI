@@ -1,216 +1,195 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { doc } from 'firebase/firestore';
+import { useFirestore, useMemoFirebase, useDoc } from '@/firebase';
+import { useCaracterizacion, useEntityName } from '@/hooks/use-areas-data';
+
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  FileText,
-  User,
-  Target,
-  GitBranch,
-  Edit,
-  Loader,
-} from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 import CaracterizacionEditor from './CaracterizacionEditor';
 import { useAuth } from '@/lib/auth';
-import { useCaracterizacion, useEntityName } from '@/hooks/use-areas-data';
-import { doc } from 'firebase/firestore';
-import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { FilePenLine, Target, UserCircle, Milestone } from 'lucide-react';
 
 interface CaracterizacionPanelProps {
   idEntidad: string;
   tipo: 'area' | 'proceso' | 'subproceso';
   areaId?: string;
   procesoId?: string;
+  showAddChildButton?: boolean;
+  onAddChildClick?: () => void;
 }
+
+const getCaracterizacionDocId = (id: string, type: string) => {
+  if (type === 'area') return 'area-' + id;
+  if (type === 'proceso') return 'process-' + id;
+  if (type === 'subproceso') return 'subprocess-' + id;
+  return null;
+};
+
+const tipoColors: Record<string, string> = {
+  'Estratégico': 'bg-blue-100 text-blue-800',
+  'Misional': 'bg-green-100 text-green-800',
+  'Apoyo': 'bg-yellow-100 text-yellow-800',
+  'Evaluación': 'bg-purple-100 text-purple-800',
+};
+
+const tipoLabels: Record<string, string> = {
+  area: 'Área',
+  proceso: 'Proceso',
+  subproceso: 'Subproceso',
+};
 
 export default function CaracterizacionPanel({
   idEntidad,
   tipo,
   areaId,
-  procesoId
+  procesoId,
+  showAddChildButton,
+  onAddChildClick,
 }: CaracterizacionPanelProps) {
-  const { userRole } = useAuth();
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
   const firestore = useFirestore();
-  
-  let docId: string | null = null;
-  if (tipo === 'area') {
-    docId = `area-${idEntidad}`;
-  } else if (tipo === 'proceso') {
-    docId = `process-${idEntidad}`;
-  } else if (tipo === 'subproceso') {
-    docId = `subprocess-${idEntidad}`;
-  }
+  const { userRole } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
 
+  const docId = getCaracterizacionDocId(idEntidad, tipo);
   const { caracterizacion, isLoading: loading } = useCaracterizacion(docId);
   const { entityName, isLoading: isEntityNameLoading } = useEntityName(idEntidad, tipo, areaId, procesoId);
-  
-  const settingsRef = useMemoFirebase(() => (firestore) ? doc(firestore, 'settings', 'organizational') : null, [firestore]);
-  const { data: settings, isLoading: isSettingsLoading } = useDoc(settingsRef);
-  const companyRef = useMemoFirebase(() => (firestore) ? doc(firestore, 'settings', 'company') : null, [firestore]);
+
+  const companyRef = useMemoFirebase(
+    () => (firestore ? doc(firestore, 'settings', 'company') : null),
+    [firestore]
+  );
   const { data: company, isLoading: isCompanyLoading } = useDoc(companyRef);
 
-  const isDataEmpty = !caracterizacion || Object.values(caracterizacion).every(value => !value);
+  const isLoading = loading || isEntityNameLoading || isCompanyLoading;
 
-  const getTitleForType = (type: string) => {
-    if (type === 'area') return 'Área';
-    return type.charAt(0).toUpperCase() + type.slice(1);
-  };
+  if (isLoading) {
+    return <Skeleton className="h-48 w-full" />;
+  }
 
-  const getTypeColor = (type: string) => {
-    switch (type) {
-        case 'Estratégico': return 'bg-blue-500 hover:bg-blue-600';
-        case 'Misional': return 'bg-green-500 hover:bg-green-600';
-        case 'Apoyo': return 'bg-yellow-500 hover:bg-yellow-600';
-        case 'Evaluación': return 'bg-indigo-500 hover:bg-indigo-600';
-        default: return 'bg-gray-500 hover:bg-gray-600';
-    }
-  };
+  const companyName = (company as any)?.name || 'Dusakawi EPSI';
+  const logoUrl = (caracterizacion as any)?.logoUrl || (company as any)?.logoUrl;
+  const canEdit = userRole === 'superadmin' || userRole === 'admin';
 
-  const logoUrl = settings?.logoUrl;
+  const carac = caracterizacion as any;
+  const hasCaracterizacion = carac && (carac.objetivo || carac.alcance || carac.responsable);
+  const tipoProceso = carac?.tipoProceso;
+  const tipoColor = tipoProceso ? (tipoColors[tipoProceso] || 'bg-gray-100 text-gray-800') : '';
 
   return (
-    <Card>
-        <CardHeader className="flex flex-row items-center justify-end space-y-0 pb-2">
-             {userRole === 'superadmin' && (
-                <Dialog open={isEditorOpen} onOpenChange={setIsEditorOpen}>
-                    <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" disabled={loading}>
-                        <Edit className="h-4 w-4 mr-2" />
-                        Editar Caracterización
-                    </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[625px] overflow-y-auto max-h-[80vh]">
-                        <DialogHeader>
-                            <DialogTitle>Editar Caracterización</DialogTitle>
-                            <DialogDescription>
-                                Ajuste los detalles para est{tipo === 'area' ? 'a' : 'e'} {tipo === 'area' ? 'área' : tipo}.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <CaracterizacionEditor 
-                            entityId={idEntidad}
-                            entityType={tipo}
-                            onSaved={() => setIsEditorOpen(false)}
-                            initialData={{...(caracterizacion || {}), logoUrl: logoUrl}}
-                        />
-                    </DialogContent>
-                </Dialog>
-            )}
-        </CardHeader>
-      <CardContent>
-        {loading || isSettingsLoading || isCompanyLoading ? (
-           <div className="flex justify-center items-center h-60">
-                <Loader className="h-8 w-8 animate-spin text-primary" />
-           </div>
-        ) : (
-            <div>
-                {/* Header Section */}
-                <div className="flex justify-between items-center pb-4 border-b">
-                    {/* Left: Logo */}
-                    <div>
-                        {logoUrl ? (
-                            <img src={logoUrl} alt="Logo" className="h-16"/>
-                        ) : (
-                            <div className="h-16 w-16 bg-gray-200 flex items-center justify-center rounded-md">
-                                <span className="font-bold text-xl text-gray-500">DE</span>
-                            </div>
-                        )}
-                    </div>
-                    {/* Center: Titles */}
-                    <div className="flex-grow">
-                        <h3 className="font-bold text-lg text-center">{company?.name || 'Dusakawi EPSI'}</h3>
-                        <p className="text-md text-center">
-                          {isEntityNameLoading ? 'Cargando...' : (
-                            <>
-                              <span className="font-semibold text-gray-900">{getTitleForType(tipo)}:</span>
-                              <span className="text-gray-900"> {entityName}</span>
-                            </>
-                          )}
-                        </p>
-                    </div>
-                    {/* Right: Metadata */}
-                    <div>
-                        <table className="text-sm">
-                            <tbody>
-                                <tr>
-                                    <td className="font-semibold pr-2">Código:</td>
-                                    <td>{caracterizacion?.codigo || 'N/A'}</td>
-                                </tr>
-                                <tr>
-                                    <td className="font-semibold pr-2">Versión:</td>
-                                    <td>{caracterizacion?.version || 'N/A'}</td>
-                                </tr>
-                                {caracterizacion?.tipoProceso && (
-                                    <tr>
-                                        <td className="font-semibold pr-2">Tipo:</td>
-                                        <td>
-                                            <Badge className={`${getTypeColor(caracterizacion.tipoProceso)} text-white`}>
-                                            {caracterizacion.tipoProceso}
-                                            </Badge>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+    <div className="rounded-lg border bg-white shadow-sm">
+      {/* Top-right edit button */}
+      {canEdit && (
+        <div className="flex justify-end px-6 pt-4">
+          <Dialog open={isEditing} onOpenChange={setIsEditing}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <FilePenLine className="mr-2 h-4 w-4" />
+                Editar Caracterización
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[600px] overflow-y-auto max-h-[80vh]">
+              <DialogHeader>
+                <DialogTitle>Editar Caracterización</DialogTitle>
+                <DialogDescription>Ajuste los detalles para este {tipoLabels[tipo].toLowerCase()}.</DialogDescription>
+              </DialogHeader>
+              <CaracterizacionEditor
+                entityId={idEntidad}
+                entityType={tipo}
+                onSaved={() => setIsEditing(false)}
+                initialData={carac || {}}
+                showAddChildButton={showAddChildButton}
+                onAddChildClick={() => {
+                  setIsEditing(false);
+                  if (onAddChildClick) onAddChildClick();
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
+      )}
 
-                {/* Main Content */}
-                {isDataEmpty ? (
-                    <div className="text-center py-10">
-                        <FileText className="mx-auto h-12 w-12 text-gray-400" />
-                        <h3 className="mt-2 text-sm font-medium text-gray-900">Sin Caracterización</h3>
-                        <p className="mt-1 text-sm text-gray-500">
-                            {userRole === 'superadmin' 
-                                ? "Haga clic en 'Editar Caracterización' para comenzar."
-                                : "Aún no se ha agregado información de caracterización."
-                            }
-                        </p>
-                    </div>
-                ) : (
-                    <div className="space-y-4 pt-4">
-                        <div className="space-y-2">
-                            <h3 className="font-semibold flex items-center gap-2 text-lg">
-                                <Target className="h-5 w-5 text-primary" />
-                                Objetivo
-                            </h3>
-                            <p className="text-gray-800 whitespace-pre-wrap pl-7">
-                                {caracterizacion?.objetivo || <em>No definido.</em>}
-                            </p>
-                        </div>
-                        <div className="space-y-2">
-                            <h3 className="font-semibold flex items-center gap-2 text-lg">
-                                <User className="h-5 w-5 text-primary" />
-                                Responsable
-                            </h3>
-                            <p className="text-gray-800 whitespace-pre-wrap pl-7">
-                                {caracterizacion?.responsable || <em>No definido.</em>}
-                            </p>
-                        </div>
-                        <div className="space-y-2">
-                            <h3 className="font-semibold flex items-center gap-2 text-lg">
-                                <GitBranch className="h-5 w-5 text-primary" />
-                                Alcance
-                            </h3>
-                            <p className="text-gray-800 whitespace-pre-wrap pl-7">
-                                {caracterizacion?.alcance || <em>No definido.</em>}
-                            </p>
-                        </div>
-                    </div>
-                )}
+      {/* Membrete / Header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b">
+        {/* Left: Logo placeholder or image */}
+        <div className="flex-shrink-0">
+          {logoUrl ? (
+            <img src={logoUrl} alt="Logo" className="h-16 w-16 object-contain rounded" />
+          ) : (
+            <div className="h-16 w-16 rounded bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-xl">
+              DE
             </div>
+          )}
+        </div>
+
+        {/* Center: Company + entity name */}
+        <div className="flex-1 text-center px-4">
+          <p className="font-bold text-lg text-gray-900">{companyName}</p>
+          <p className="text-sm text-gray-700">
+            <span className="font-semibold">{tipoLabels[tipo]}:</span>{' '}
+            <span className="text-gray-900 font-medium">{entityName}</span>
+          </p>
+        </div>
+
+        {/* Right: Código, Versión, Tipo */}
+        <div className="flex-shrink-0 text-right text-sm space-y-1 min-w-[120px]">
+          <p>
+            <span className="font-semibold">Código:</span>{' '}
+            <span className="text-gray-900">{carac?.codigo || 'N/A'}</span>
+          </p>
+          <p>
+            <span className="font-semibold">Versión:</span>{' '}
+            <span className="text-gray-900">{carac?.version || 'N/A'}</span>
+          </p>
+          {tipoProceso && (
+            <p className="flex items-center justify-end gap-1">
+              <span className="font-semibold">Tipo:</span>
+              <span className={'px-2 py-0.5 rounded-full text-xs font-semibold ' + tipoColor}>
+                {tipoProceso}
+              </span>
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Body: Caracterización content */}
+      <div className="px-6 py-4">
+        {!hasCaracterizacion ? (
+          <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+            <FilePenLine className="h-10 w-10 mb-2" />
+            <p className="text-sm font-medium">Sin Caracterización</p>
+            {canEdit && (
+              <p className="text-xs mt-1">Haga clic en 'Editar Caracterización' para comenzar.</p>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex items-start gap-3">
+              <Target className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-semibold text-gray-900">Objetivo</p>
+                <p className="text-gray-800 text-sm mt-0.5">{carac?.objetivo || 'No definido.'}</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <UserCircle className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-semibold text-gray-900">Responsable</p>
+                <p className="text-gray-800 text-sm mt-0.5">{carac?.responsable || 'No definido.'}</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <Milestone className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-semibold text-gray-900">Alcance</p>
+                <p className="text-gray-800 text-sm mt-0.5">{carac?.alcance || 'No definido.'}</p>
+              </div>
+            </div>
+          </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useActionState, useEffect, useRef } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { createEntityAction } from '@/app/actions';
 import { Button } from '@/components/ui/button';
@@ -23,9 +22,9 @@ interface AddEntityFormProps {
   entityType: 'area' | 'process' | 'subprocess';
   parentId?: string;
   grandParentId?: string;
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  children: React.ReactNode;
+  isOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  children?: React.ReactNode;
 }
 
 function SubmitButton() {
@@ -42,13 +41,19 @@ export function AddEntityForm({
   entityType,
   parentId,
   grandParentId,
-  isOpen,
-  onOpenChange,
+  isOpen: controlledIsOpen,
+  onOpenChange: controlledOnOpenChange,
   children,
 }: AddEntityFormProps) {
   const { toast } = useToast();
   const [state, formAction] = useActionState(createEntityAction, { message: '', error: undefined });
   const formRef = useRef<HTMLFormElement>(null);
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+
+  const isControlled = controlledIsOpen !== undefined;
+  
+  const isOpen = isControlled ? controlledIsOpen : internalIsOpen;
+  const onOpenChange = isControlled ? controlledOnOpenChange! : setInternalIsOpen;
   
   const typeLabels = {
     area: { title: 'Área', description: 'un nuevo macroproceso en el mapa.' },
@@ -86,7 +91,7 @@ export function AddEntityForm({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+      {children && <DialogTrigger asChild>{children}</DialogTrigger>}
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

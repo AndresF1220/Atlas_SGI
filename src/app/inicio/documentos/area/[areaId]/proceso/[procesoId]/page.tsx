@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useParams } from 'next/navigation';
 import CaracterizacionPanel from '@/components/dashboard/CaracterizacionPanel';
 import ProcesoCards from '@/components/dashboard/ProcesoCards';
 import RepoEmbed from '@/components/dashboard/RepoEmbed';
-import { useProceso, useArea } from '@/hooks/use-areas-data';
+import { useProceso, useArea, useSubprocesos } from '@/hooks/use-areas-data';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { useState } from 'react';
@@ -22,9 +21,12 @@ export default function ProcesoIdPage() {
 
   const { area, isLoading: isLoadingArea } = useArea(areaId);
   const { proceso, isLoading: isLoadingProceso } = useProceso(areaId, procesoId);
-  
-  // If params are not yet available, show a loading state.
-  if (!areaId || !procesoId || isLoadingArea || isLoadingProceso) {
+  const { subprocesos, isLoading: isLoadingSubprocesos } = useSubprocesos(areaId, procesoId);
+
+  const isLoading = isLoadingArea || isLoadingProceso || isLoadingSubprocesos;
+  const canAdd = userRole === 'superadmin' || userRole === 'admin';
+
+  if (!areaId || !procesoId || isLoading) {
     return (
         <div className="flex flex-col gap-8">
             <Skeleton className="h-40 w-full" />
@@ -36,8 +38,7 @@ export default function ProcesoIdPage() {
         </div>
     );
   }
-  
-  // After loading, if a document is missing, show a user-friendly message
+
   if (!area || !proceso) {
     return (
       <div className="flex flex-col items-center justify-center h-96 text-center">
@@ -47,32 +48,48 @@ export default function ProcesoIdPage() {
     );
   }
 
+  const hasSubprocesos = subprocesos && subprocesos.length > 0;
+
   return (
     <div className="flex flex-col gap-8">
-      <CaracterizacionPanel idEntidad={proceso.id} tipo="proceso" areaId={area.id} />
+      <CaracterizacionPanel
+        idEntidad={proceso.id}
+        tipo="proceso"
+        areaId={area.id}
+        showAddChildButton={!hasSubprocesos && canAdd}
+        onAddChildClick={() => setIsAdding(true)}
+      />
 
-      <div className="flex flex-col gap-4">
-        <div className="flex justify-between items-center w-full border-b pb-2">
-            <h2 className="text-2xl font-bold tracking-tight font-headline">Sub-procesos</h2>
-            <div className="flex items-center gap-2">
-                {userRole === 'superadmin' && (
-                    <AddEntityForm 
-                        entityType="subprocess"
-                        parentId={proceso.id}
-                        grandParentId={area.id}
-                        isOpen={isAdding}
-                        onOpenChange={setIsAdding}
-                    >
-                        <Button>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Agregar Subproceso
-                        </Button>
-                    </AddEntityForm>
-                )}
-            </div>
+      {canAdd && (
+        <AddEntityForm
+          entityType="subprocess"
+          parentId={proceso.id}
+          grandParentId={area.id}
+          isOpen={isAdding}
+          onOpenChange={setIsAdding}
+        />
+      )}
+
+      {hasSubprocesos && (
+        <div className="flex flex-col gap-4">
+          <div className="flex justify-between items-center w-full border-b pb-2">
+              <h2 className="text-2xl font-bold tracking-tight font-headline">Sub-procesos</h2>
+              {canAdd && (
+                  <AddEntityForm 
+                      entityType="subprocess"
+                      parentId={proceso.id}
+                      grandParentId={area.id}
+                  >
+                      <Button>
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                          Agregar Subproceso
+                      </Button>
+                  </AddEntityForm>
+              )}
+          </div>
+          <ProcesoCards areaId={areaId} procesoId={procesoId} subprocesos={subprocesos} />
         </div>
-        <ProcesoCards areaId={areaId} procesoId={procesoId} />
-      </div>
+      )}
 
       <RepoEmbed areaId={areaId} procesoId={procesoId} />
     </div>
