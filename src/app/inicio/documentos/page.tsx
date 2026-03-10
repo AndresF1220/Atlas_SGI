@@ -60,10 +60,28 @@ const AreaCard = ({ area }: { area: any }) => {
     );
 }
 
+const TransversalCard = () => {
+    const handleClick = () => {
+        window.location.href = '/inicio/documentos/transversales';
+    };
+
+    return (
+        <Card 
+            className="h-full flex flex-col items-center justify-center text-center p-6 transition-all duration-300 shadow-md hover:shadow-lg hover:-translate-y-1 cursor-pointer"
+            onClick={handleClick}
+        >
+            <Icons.Network className="h-16 w-16 text-primary mb-4" />
+            <CardHeader className="p-0">
+                <CardTitle className="font-headline text-xl">Procesos Transversales</CardTitle>
+            </CardHeader>
+        </Card>
+    );
+}
+
+
 export default function RepositoryAreasPage() {
   const { areas, isLoading } = useAreas();
   const [isAdding, setIsAdding] = useState(false);
-  const [isSeeding, setIsSeeding] = useState(false);
   const [isSeedingAction, setIsSeedingAction] = useState(false);
   const { toast } = useToast();
   const { userRole } = useAuth();
@@ -110,17 +128,21 @@ export default function RepositoryAreasPage() {
 
   useEffect(() => {
     const migrateTypes = async () => {
-      if (userRole === 'superadmin' && areas && areas.some(area => !area.tipo)) {
+      const migrationDone = localStorage.getItem('areaTypesMigrationComplete');
+      if (!migrationDone && userRole === 'superadmin' && areas && areas.some(area => !area.tipo)) {
         await migrateAreaTypesAction();
         toast({
           title: 'Migración de Tipos de Área Completa',
           description: 'Se han asignado los tipos a las áreas que no tenían.',
         });
+        localStorage.setItem('areaTypesMigrationComplete', 'true');
       }
     };
     migrateTypes();
   }, [areas, userRole, toast]);
 
+  const direccionAreas = areas?.filter(area => area.tipo === 'direccion');
+  const transversalAreasExist = areas?.some(area => area.tipo === 'transversal');
 
   const showLoadingState = isLoading || isSeedingAction;
 
@@ -136,6 +158,7 @@ export default function RepositoryAreasPage() {
                 entityType="area" 
                 isOpen={isAdding} 
                 onOpenChange={setIsAdding}
+                additionalData={{ tipo: 'direccion' }}
             >
                 <Button onClick={() => setIsAdding(true)}>
                     <Icons.PlusCircle className="mr-2 h-4 w-4" />
@@ -149,9 +172,10 @@ export default function RepositoryAreasPage() {
         {showLoadingState && Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-56 w-full" />
         ))}
-        {!showLoadingState && areas?.map((area) => (
+        {!showLoadingState && direccionAreas?.map((area) => (
             <AreaCard key={area.id} area={area} />
         ))}
+        {!showLoadingState && transversalAreasExist && <TransversalCard />}
       </div>
        {!showLoadingState && areas?.length === 0 && (
             <div className="col-span-full text-center py-10">

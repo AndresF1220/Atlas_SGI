@@ -23,6 +23,7 @@ interface AddEntityFormProps {
   entityType: 'area' | 'process' | 'subprocess';
   parentId?: string;
   grandParentId?: string;
+  additionalData?: { [key: string]: string };
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   children: React.ReactNode;
@@ -42,6 +43,7 @@ export function AddEntityForm({
   entityType,
   parentId,
   grandParentId,
+  additionalData,
   isOpen,
   onOpenChange,
   children,
@@ -66,7 +68,7 @@ export function AddEntityForm({
             title: '¡Éxito!',
             description: state.message,
         });
-        onOpenChange(false); // Close dialog on success
+        onOpenChange(false);
         formRef.current?.reset();
     }
     if (state.error) {
@@ -78,7 +80,6 @@ export function AddEntityForm({
     }
   }, [state, toast, onOpenChange]);
 
-  // Reset form when dialog closes
   useEffect(() => {
     if (!isOpen) {
       formRef.current?.reset();
@@ -100,9 +101,13 @@ export function AddEntityForm({
                     <Input id="name" name="name" placeholder={`Nombre del ${labels.title}`} required />
                 </div>
                 
-                <input type="hidden" name="type" value={entityType} />
+                <input type="hidden" name="entityType" value={entityType} />
+                {entityType === 'area' && <input type="hidden" name="type" value="area" />}
                 {parentId && <input type="hidden" name="parentId" value={parentId} />}
                 {grandParentId && <input type="hidden" name="grandParentId" value={grandParentId} />}
+                {additionalData && Object.entries(additionalData).map(([key, value]) => (
+                    <input type="hidden" name={key} value={value} key={key} />
+                ))}
             </div>
             <DialogFooter>
                 <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>

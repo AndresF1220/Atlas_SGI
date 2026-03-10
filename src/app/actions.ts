@@ -6,7 +6,6 @@ import { slugify } from '@/lib/slug';
 import { SEED_AREAS } from '@/data/seed-map';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
-
 const iconMap: { [key: string]: string } = {
   "gestión de calidad": "ClipboardCheck",
   "dirección administrativa y financiera": "Landmark",
@@ -45,6 +44,7 @@ const createSchema = z.object({
   type: z.enum(['area', 'process', 'subprocess']),
   parentId: z.string().optional(),
   grandParentId: z.string().optional(),
+  tipo: z.string().optional(),
 });
 
 export async function createEntityAction(
@@ -64,6 +64,7 @@ export async function createEntityAction(
         type: s(formData.get('type')) as 'area' | 'process' | 'subprocess',
         parentId: s(formData.get('parentId')),
         grandParentId: s(formData.get('grandParentId')),
+        tipo: s(formData.get('tipo')),
     };
     
     const validatedFields = createSchema.safeParse(payload);
@@ -74,7 +75,7 @@ export async function createEntityAction(
         return { message: 'Validation failed', error: errorMessages.join(' ') || 'Debe ingresar un nombre.' };
     }
 
-    const { name, objetivo, alcance, responsable, type, parentId, grandParentId } = validatedFields.data;
+    const { name, objetivo, alcance, responsable, type, parentId, grandParentId, tipo } = validatedFields.data;
 
     try {
         const batch = adminDb.batch();
@@ -87,6 +88,7 @@ export async function createEntityAction(
         
         if (type === 'area') {
             entityData.icono = getIconForArea(name);
+            if (tipo) entityData.tipo = tipo;
         }
         
         const tempRef = adminDb.collection('temp').doc();
@@ -127,7 +129,6 @@ export async function createEntityAction(
         return { message: 'Error', error: 'No se pudo crear la entidad: ' + e.message };
     }
 }
-
 
 export async function deleteEntityAction(
   prevState: any,
