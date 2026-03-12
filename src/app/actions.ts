@@ -819,3 +819,60 @@ export async function migrateAreaTypesAction(): Promise<{ message: string; error
         return { message: 'Error', error: 'No se pudo migrar los tipos: ' + e.message };
     }
 }
+export async function saveFilaEntradasSalidasAction(data: {
+  id: string | null;
+  entidadId: string;
+  tipoEntidad: 'area' | 'proceso' | 'subproceso';
+  fase: 'Planear' | 'Hacer' | 'Verificar' | 'Actuar';
+  proveedor: string;
+  entrada: string;
+  actividades: string;
+  responsable: string;
+  salida: string;
+  cliente: string;
+  orden: number;
+}): Promise<{ message: string; error?: string }> {
+  const { db: adminDb } = await import('@/firebase/server-config');
+  if (!adminDb) return { message: 'Error', error: 'Firestore Admin no está inicializado.' };
+ 
+  try {
+    const payload = Object.fromEntries(
+      Object.entries(data).filter(([_, v]) => v !== undefined && _ !== 'id')
+    );
+ 
+    if (data.id) {
+      // Actualizar fila existente
+      await adminDb.collection('entradas_salidas').doc(data.id).update({
+        ...payload,
+        updatedAt: new Date(),
+      });
+      return { message: 'Fila actualizada con éxito.' };
+    } else {
+      // Crear nueva fila
+      await adminDb.collection('entradas_salidas').add({
+        ...payload,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      return { message: 'Fila creada con éxito.' };
+    }
+  } catch (e: any) {
+    console.error('Error saving fila entradas_salidas:', e);
+    return { message: 'Error', error: 'No se pudo guardar la fila: ' + e.message };
+  }
+}
+ 
+export async function deleteFilaEntradasSalidasAction(
+  filaId: string
+): Promise<{ message: string; error?: string }> {
+  const { db: adminDb } = await import('@/firebase/server-config');
+  if (!adminDb) return { message: 'Error', error: 'Firestore Admin no está inicializado.' };
+ 
+  try {
+    await adminDb.collection('entradas_salidas').doc(filaId).delete();
+    return { message: 'Fila eliminada con éxito.' };
+  } catch (e: any) {
+    console.error('Error deleting fila entradas_salidas:', e);
+    return { message: 'Error', error: 'No se pudo eliminar la fila: ' + e.message };
+  }
+}

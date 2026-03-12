@@ -2,6 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import CaracterizacionPanel from '@/components/dashboard/CaracterizacionPanel';
+import EntradasSalidasPanel from '@/components/dashboard/EntradasSalidasPanel';
 import ProcesoCards from '@/components/dashboard/ProcesoCards';
 import RepoEmbed from '@/components/dashboard/RepoEmbed';
 import { useProceso, useArea, useSubprocesos } from '@/hooks/use-areas-data';
@@ -28,14 +29,14 @@ export default function ProcesoIdPage() {
 
   if (!areaId || !procesoId || isLoading) {
     return (
-        <div className="flex flex-col gap-8">
-            <Skeleton className="h-40 w-full" />
-            <Skeleton className="h-10 w-1/4" />
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <Skeleton className="h-48 w-full" />
-                <Skeleton className="h-48 w-full" />
-            </div>
+      <div className="flex flex-col gap-8">
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-10 w-1/4" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-48 w-full" />
         </div>
+      </div>
     );
   }
 
@@ -73,19 +74,19 @@ export default function ProcesoIdPage() {
       {hasSubprocesos && (
         <div className="flex flex-col gap-4">
           <div className="flex justify-between items-center w-full border-b pb-2">
-              <h2 className="text-2xl font-bold tracking-tight font-headline">Sub-procesos</h2>
-              {canAdd && (
-                  <AddEntityForm 
-                      entityType="subprocess"
-                      parentId={proceso.id}
-                      grandParentId={area.id}
-                  >
-                      <Button>
-                          <PlusCircle className="mr-2 h-4 w-4" />
-                          Agregar Subproceso
-                      </Button>
-                  </AddEntityForm>
-              )}
+            <h2 className="text-2xl font-bold tracking-tight font-headline">Sub-procesos</h2>
+            {canAdd && (
+              <AddEntityForm
+                entityType="subprocess"
+                parentId={proceso.id}
+                grandParentId={area.id}
+              >
+                <Button>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Agregar Subproceso
+                </Button>
+              </AddEntityForm>
+            )}
           </div>
           <ProcesoCards areaId={areaId} procesoId={procesoId} subprocesos={subprocesos} />
         </div>

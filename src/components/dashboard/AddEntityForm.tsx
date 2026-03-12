@@ -25,6 +25,7 @@ interface AddEntityFormProps {
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   children?: React.ReactNode;
+  additionalData?: Record<string, any>;
 }
 
 function SubmitButton() {
@@ -44,6 +45,7 @@ export function AddEntityForm({
   isOpen: controlledIsOpen,
   onOpenChange: controlledOnOpenChange,
   children,
+  additionalData,
 }: AddEntityFormProps) {
   const { toast } = useToast();
   const [state, formAction] = useActionState(createEntityAction, { message: '', error: undefined });
@@ -107,6 +109,9 @@ export function AddEntityForm({
                 <input type="hidden" name="entityType" value={entityType} />
                 {parentId && <input type="hidden" name="parentId" value={parentId} />}
                 {grandParentId && <input type="hidden" name="grandParentId" value={grandParentId} />}
+                {additionalData && Object.entries(additionalData).map(([key, value]) => (
+                    <input type="hidden" name={key} value={value} key={key} />
+                ))}
             </div>
             <DialogFooter>
                 <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -10,12 +9,12 @@ import { Button } from '@/components/ui/button';
 import { AddEntityForm } from '@/components/dashboard/AddEntityForm';
 import { useToast } from '@/hooks/use-toast';
 import { seedProcessMapAction, migrateAreaIconsAction, migrateAreaTypesAction } from '@/app/actions';
-import { EntityOptionsDropdown } from '@/components/dashboard/EntityOptionsDropdown';
 import { useAuth } from '@/lib/auth';
+import Link from 'next/link';
 
+// Moved AreaCard outside to be a standalone component
 const AreaCard = ({ area }: { area: any }) => {
     const { toast } = useToast();
-    const { userRole } = useAuth();
     const Icon = (area.icono && (Icons as any)[area.icono]) ? (Icons as any)[area.icono] : Icons.Building;
 
     const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -47,19 +46,11 @@ const AreaCard = ({ area }: { area: any }) => {
                     <CardTitle className="font-headline text-xl">{area.nombre}</CardTitle>
                 </CardHeader>
             </Card>
-             {userRole === 'superadmin' && (
-                <div className="absolute top-2 right-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                    <EntityOptionsDropdown
-                        entityId={area.id}
-                        entityType="area"
-                        entityName={area.nombre}
-                    />
-                </div>
-            )}
         </div>
     );
-}
+};
 
+// Moved TransversalCard outside as well
 const TransversalCard = () => {
     const handleClick = () => {
         window.location.href = '/inicio/documentos/transversales';
@@ -76,10 +67,10 @@ const TransversalCard = () => {
             </CardHeader>
         </Card>
     );
-}
+};
 
-
-export default function RepositoryAreasPage() {
+// Component with the main logic, only rendered when authenticated
+function AreasDashboard() {
   const { areas, isLoading } = useAreas();
   const [isAdding, setIsAdding] = useState(false);
   const [isSeedingAction, setIsSeedingAction] = useState(false);
@@ -89,7 +80,7 @@ export default function RepositoryAreasPage() {
   useEffect(() => {
     const ensureSeeded = async () => {
         if (!isLoading && areas && areas.length === 0 && userRole === 'superadmin' && !isSeedingAction) {
-            setIsSeedingAction(true); // Prevent re-triggering
+            setIsSeedingAction(true);
             toast({
                 title: "Restaurando mapa de procesos...",
                 description: "La base de datos está vacía. Se restaurarán los datos predeterminados.",
@@ -189,4 +180,51 @@ export default function RepositoryAreasPage() {
        )}
     </div>
   );
+}
+
+// Main page component that handles auth checking
+export default function RepositoryAreasPage() {
+    const { user, isRoleLoading, isActive } = useAuth();
+
+    if (isRoleLoading) {
+        return (
+            <div className="flex flex-col gap-8">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <Skeleton className="h-9 w-72 mb-2" />
+                        <Skeleton className="h-5 w-96" />
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-4">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                        <Skeleton key={i} className="h-56 w-full" />
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
+    if (!user || !isActive) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)] text-center px-4">
+                <Card className="max-w-md w-full p-6 sm:p-8 shadow-lg">
+                    <CardHeader className="p-0">
+                        <CardTitle className="text-2xl font-bold font-headline">Acceso Denegado</CardTitle>
+                        <CardDescription className="pt-2">
+                            { !user ? 'Necesita iniciar sesión para ver esta página.' : 'Su cuenta está inactiva. Por favor, contacte a un administrador.'}
+                        </CardDescription>
+                    </CardHeader>
+                    { !user && (
+                        <CardContent className="p-0 pt-6">
+                            <Button asChild>
+                                <Link href="/">Iniciar Sesión</Link>
+                            </Button>
+                        </CardContent>
+                    )}
+                </Card>
+            </div>
+        );
+    }
+
+    return <AreasDashboard />;
 }

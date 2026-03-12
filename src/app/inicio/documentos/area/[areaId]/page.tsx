@@ -2,6 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import CaracterizacionPanel from '@/components/dashboard/CaracterizacionPanel';
+import EntradasSalidasPanel from '@/components/dashboard/EntradasSalidasPanel';
 import ProcesoCards from '@/components/dashboard/ProcesoCards';
 import RepoEmbed from '@/components/dashboard/RepoEmbed';
 import { useArea, useProcesos } from '@/hooks/use-areas-data';

@@ -30,7 +30,7 @@ import { RenameEntityForm } from './RenameEntityForm';
 interface EntityOptionsDropdownProps {
   entityId: string;
   entityName: string;
-  entityType: 'process' | 'subprocess';
+  entityType: 'area' | 'process' | 'subprocess';
   parentId: string;
   grandParentId?: string;
   redirectOnDelete?: string;

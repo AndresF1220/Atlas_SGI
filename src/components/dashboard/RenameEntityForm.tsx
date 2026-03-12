@@ -21,7 +21,7 @@ import { renameEntityAction } from '@/app/actions';
 
 interface RenameEntityFormProps {
   entityId: string;
-  entityType: 'process' | 'subprocess';
+  entityType: 'area' | 'process' | 'subprocess';
   currentName: string;
   parentId: string;
   grandParentId?: string;
@@ -53,6 +53,12 @@ export function RenameEntityForm({
   const [state, formAction] = useActionState(renameEntityAction, { message: '', error: undefined });
   const formRef = useRef<HTMLFormElement>(null);
 
+  const typeLabels: Record<string, string> = {
+    area: 'Área',
+    process: 'Proceso',
+    subprocess: 'Subproceso',
+  };
+
   useEffect(() => {
     if (!isOpen) {
         formRef.current?.reset();
@@ -74,7 +80,7 @@ export function RenameEntityForm({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Renombrar {entityType === 'process' ? 'Proceso' : 'Subproceso'}</DialogTitle>
+          <DialogTitle>Renombrar {typeLabels[entityType]}</DialogTitle>
           <DialogDescription>
             Estás a punto de cambiar el nombre de "{currentName}".
           </DialogDescription>
