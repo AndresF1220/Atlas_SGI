@@ -70,7 +70,7 @@ export default function AreaIdPage() {
       {hasProcesos && (
         <div className="flex flex-col gap-4">
           <div className="flex justify-between items-center w-full border-b pb-2">
-            <h2 className="text-2xl font-bold tracking-tight font-headline">Procesos</h2>
+            <h2 className="text-xl font-semibold tracking-tight font-headline">Procesos</h2>
             {canAdd && (
               <AddEntityForm entityType="process" parentId={area.id}>
                 <Button>

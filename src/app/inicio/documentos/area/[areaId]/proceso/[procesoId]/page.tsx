@@ -74,7 +74,7 @@ export default function ProcesoIdPage() {
       {hasSubprocesos && (
         <div className="flex flex-col gap-4">
           <div className="flex justify-between items-center w-full border-b pb-2">
-            <h2 className="text-2xl font-bold tracking-tight font-headline">Sub-procesos</h2>
+            <h2 className="text-xl font-semibold tracking-tight font-headline">Sub-procesos</h2>
             {canAdd && (
               <AddEntityForm
                 entityType="subprocess"

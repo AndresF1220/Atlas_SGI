@@ -298,7 +298,7 @@ export default function RepoEmbed({
   return (
     <>
       <div className="border-b pb-2 -mb-2">
-        <h2 className="text-2xl font-bold font-headline">Documentos</h2>
+        <h2 className="text-xl font-semibold font-headline">Documentos</h2>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">

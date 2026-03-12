@@ -9,12 +9,14 @@ import { Button } from '@/components/ui/button';
 import { AddEntityForm } from '@/components/dashboard/AddEntityForm';
 import { useToast } from '@/hooks/use-toast';
 import { seedProcessMapAction, migrateAreaIconsAction, migrateAreaTypesAction } from '@/app/actions';
+import { EntityOptionsDropdown } from '@/components/dashboard/EntityOptionsDropdown';
 import { useAuth } from '@/lib/auth';
 import Link from 'next/link';
 
 // Moved AreaCard outside to be a standalone component
 const AreaCard = ({ area }: { area: any }) => {
     const { toast } = useToast();
+    const { userRole } = useAuth();
     const Icon = (area.icono && (Icons as any)[area.icono]) ? (Icons as any)[area.icono] : Icons.Building;
 
     const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -46,6 +48,16 @@ const AreaCard = ({ area }: { area: any }) => {
                     <CardTitle className="font-headline text-xl">{area.nombre}</CardTitle>
                 </CardHeader>
             </Card>
+            {userRole === 'superadmin' && (
+                <div className="absolute top-2 right-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                    <EntityOptionsDropdown
+                        entityId={area.id}
+                        entityType="area"
+                        entityName={area.nombre}
+                        parentId={area.id}
+                    />
+                </div>
+            )}
         </div>
     );
 };
