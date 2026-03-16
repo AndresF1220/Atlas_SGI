@@ -109,7 +109,7 @@ export default function EntradasSalidasPanel({ entidadId, tipoEntidad }: Props) 
             <TableProperties className="h-8 w-8 mb-2" />
             <p className="text-sm font-medium">Sin entradas y salidas registradas</p>
             {canEdit && (
-              <p className="text-xs mt-1">Haga clic en "Agregar fila" para comenzar.</p>
+              <p className="text-xs mt-1">Haga clic en \"Agregar fila\" para comenzar.</p>
             )}
           </div>
         ) : (
@@ -117,13 +117,13 @@ export default function EntradasSalidasPanel({ entidadId, tipoEntidad }: Props) 
             <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="bg-gray-50">
-                  <th className="border border-gray-200 px-3 py-2 text-center font-semibold text-gray-700">Proveedor</th>
-                  <th className="border border-gray-200 px-3 py-2 text-center font-semibold text-gray-700">Entrada</th>
-                  <th className="border border-gray-200 px-3 py-2 text-center font-semibold text-gray-700">Actividades</th>
-                  <th className="border border-gray-200 px-3 py-2 text-center font-semibold text-gray-700">Responsable</th>
-                  <th className="border border-gray-200 px-3 py-2 text-center font-semibold text-gray-700">Salida</th>
-                  <th className="border border-gray-200 px-3 py-2 text-center font-semibold text-gray-700">Cliente</th>
-                  {canEdit && <th className="border border-gray-200 px-2 py-2 w-8"></th>}
+                  <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-gray-700">Proveedor</th>
+                  <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-gray-700">Entrada</th>
+                  <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-gray-700">Actividades</th>
+                  <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-gray-700">Responsable</th>
+                  <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-gray-700">Salida</th>
+                  <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-gray-700">Cliente</th>
+                  {canEdit && <th className="border border-gray-300 px-2 py-2 w-8"></th>}
                 </tr>
               </thead>
               <tbody>
@@ -135,7 +135,7 @@ export default function EntradasSalidasPanel({ entidadId, tipoEntidad }: Props) 
                       <tr>
                         <td
                           colSpan={canEdit ? 7 : 6}
-                          className={'border border-gray-200 px-3 py-1.5 font-bold text-xs text-center ' + faseColors[fase]}
+                          className={'border border-gray-300 px-3 py-1.5 font-bold text-xs text-center ' + faseColors[fase]}
                         >
                           {fase.toUpperCase()}
                         </td>
@@ -146,14 +146,14 @@ export default function EntradasSalidasPanel({ entidadId, tipoEntidad }: Props) 
                           className="hover:bg-gray-50 cursor-pointer"
                           onClick={() => canEdit && handleEditarFila(fila)}
                         >
-                          <td className="border border-gray-200 px-3 py-2 align-top text-gray-700">{fila.proveedor}</td>
-                          <td className="border border-gray-200 px-3 py-2 align-top text-gray-700">{fila.entrada}</td>
-                          <td className="border border-gray-200 px-3 py-2 align-top text-gray-700">{fila.actividades}</td>
-                          <td className="border border-gray-200 px-3 py-2 align-top text-gray-700">{fila.responsable}</td>
-                          <td className="border border-gray-200 px-3 py-2 align-top text-gray-700">{fila.salida}</td>
-                          <td className="border border-gray-200 px-3 py-2 align-top text-gray-700">{fila.cliente}</td>
+                          <td className="border border-gray-300 px-3 py-2 align-top text-gray-700">{fila.proveedor}</td>
+                          <td className="border border-gray-300 px-3 py-2 align-top text-gray-700">{fila.entrada}</td>
+                          <td className="border border-gray-300 px-3 py-2 align-top text-gray-700">{fila.actividades}</td>
+                          <td className="border border-gray-300 px-3 py-2 align-top text-gray-700">{fila.responsable}</td>
+                          <td className="border border-gray-300 px-3 py-2 align-top text-gray-700">{fila.salida}</td>
+                          <td className="border border-gray-300 px-3 py-2 align-top text-gray-700">{fila.cliente}</td>
                           {canEdit && (
-                            <td className="border border-gray-200 px-2 py-2 text-center align-top">
+                            <td className="border border-gray-300 px-2 py-2 text-center align-top">
                               <span className="text-gray-300 hover:text-gray-600 text-xs">✎</span>
                             </td>
                           )}

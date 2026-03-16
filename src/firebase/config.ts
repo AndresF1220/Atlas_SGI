@@ -1,9 +1,9 @@
 export const firebaseConfig = {
-  apiKey: "AIzaSyDtAvdzRHJo3R7jaKPfhDE4__Y6O20ZeC0",
-  authDomain: "atlas-sgi.firebaseapp.com",
-  projectId: "atlas-sgi",
-  storageBucket: "atlas-sgi.firebasestorage.app",
-  messagingSenderId: "197437438424",
-  appId: "1:197437438424:web:0c6edffa8241dcef155aad",
-  measurementId: "G-WJMTFP3HG6",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };

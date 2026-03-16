@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -43,7 +42,13 @@ const hardcodedTranslations: Record<string, string> = {
     subproceso: "Subproceso",
 };
 
-// A hook to fetch breadcrumb data dynamically
+type BreadcrumbItemData = {
+  href: string;
+  label: string;
+  isLast: boolean;
+  isClickable: boolean;
+};
+
 function useBreadcrumbData(segments: string[]) {
     const areaId = segments.includes('area') ? segments[segments.indexOf('area') + 1] : null;
     const procesoId = segments.includes('proceso') ? segments[segments.indexOf('proceso') + 1] : null;
@@ -84,11 +89,9 @@ export default function AppHeader() {
   }
 
   const breadcrumbItems = useMemo(() => {
-    return pathSegments.map((segment, index) => {
+    return pathSegments.map((segment, index): BreadcrumbItemData | null => {
         const isDynamicSegmentName = ['area', 'proceso', 'subproceso'].includes(segment);
-        if (isDynamicSegmentName) {
-            return null;
-        }
+        if (isDynamicSegmentName) return null;
 
         const isDynamicId = !hardcodedTranslations[segment];
         const label = hardcodedTranslations[segment] || dataMap[segment] || segment;
@@ -103,11 +106,11 @@ export default function AppHeader() {
         const isClickable = !isLast && !isSubprocesoId;
 
         return { href, label, isLast, isClickable };
-    }).filter(Boolean);
+    }).filter((item): item is BreadcrumbItemData => item !== null);
 }, [pathSegments, dataMap, isLoading]);
 
   return (
-    <header className="flex h-16 items-center gap-4 border-b bg-background px-4 lg:px-6 sticky top-0 z-30">
+    <header className="flex h-16 items-center gap-4 border-b-[2px] border-gray-300 bg-background px-4 lg:px-6 sticky top-0 z-30">
       <Sheet>
         <SheetTrigger asChild>
           <Button variant="outline" size="icon" className="shrink-0 md:hidden">

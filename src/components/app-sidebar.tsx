@@ -4,7 +4,7 @@ import AppSidebarNav from './app-sidebar-nav';
 export default function AppSidebar() {
   return (
     <Sidebar
-      className="border-r"
+      className="border-r-[2px] border-gray-300"
       collapsible="icon"
       variant="sidebar"
     >

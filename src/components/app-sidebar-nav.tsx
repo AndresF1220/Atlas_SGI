@@ -1,11 +1,9 @@
-
 'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   SidebarContent,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
@@ -58,10 +56,9 @@ export default function AppSidebarNav({ isMobile }: AppSidebarNavProps) {
 
   const hierarchyName = userProfile?.subprocesoNombre || userProfile?.procesoNombre || userProfile?.areaNombre || 'Sin Asignación';
 
-
   return (
     <>
-      <SidebarHeader className="border-b">
+      <div className="flex h-16 items-center border-b-[2px] border-gray-300">
         <Link href="/inicio" className="flex h-16 items-center px-4">
           <div className="flex items-center gap-2">
             <Image src="/Imagenes/favicon.png" alt="Atlas SGI Logo" width={28} height={28} className="h-7 w-7" />
@@ -70,9 +67,9 @@ export default function AppSidebarNav({ isMobile }: AppSidebarNavProps) {
             </span>
           </div>
         </Link>
-      </SidebarHeader>
+      </div>
       
-      <div className="flex flex-col items-center text-center w-full px-3 py-4 gap-2 border-b">
+      <div className="flex flex-col items-center text-center w-full px-3 py-4 gap-2 border-b-[2px] border-gray-300">
         <Avatar className="h-16 w-16 mb-1">
             <AvatarImage src={user?.photoURL || "https://images.unsplash.com/photo-1511367461989-f85a21fda167?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxwcm9maWxlfGVufDB8fHx8MTc2MTY0MDYwMXww&ixlib=rb-4.1.0&q=80&w=1080"} alt={userProfile?.fullName || user?.displayName || 'Usuario'} />
             <AvatarFallback>{userInitial}</AvatarFallback>
@@ -124,7 +121,7 @@ export default function AppSidebarNav({ isMobile }: AppSidebarNavProps) {
         </SidebarMenu>
       </SidebarContent>
 
-      <SidebarSeparator />
+      <SidebarSeparator className="bg-gray-300 h-[2px] mx-0" />
       
       <SidebarContent className="p-2 flex-none">
         <SidebarMenu>
