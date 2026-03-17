@@ -17,6 +17,17 @@ import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { format, setMonth, setYear } from 'date-fns';
 import { es } from 'date-fns/locale';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ReferenceLine,
+  ResponsiveContainer,
+  Cell,
+} from 'recharts';
 
 const MESES = [
   { value: 0, label: 'Enero' }, { value: 1, label: 'Febrero' },
@@ -26,10 +37,6 @@ const MESES = [
   { value: 8, label: 'Septiembre' }, { value: 9, label: 'Octubre' },
   { value: 10, label: 'Noviembre' }, { value: 11, label: 'Diciembre' },
 ];
-
-const ANIOS = Array.from({ length: 6 }, (_, i) =>
-  new Date().getFullYear() - 2 + i
-);
 
 function MonthYearPicker({
   value,
@@ -60,42 +67,23 @@ function MonthYearPicker({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-3">
-        {/* Selector de año */}
         <div className="flex justify-between items-center mb-3">
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="h-7 w-7"
-            onClick={() => setViewYear(y => y - 1)}
-          >
-            ‹
-          </Button>
+          <Button type="button" variant="outline" size="icon" className="h-7 w-7"
+            onClick={() => setViewYear(y => y - 1)}>‹</Button>
           <span className="text-sm font-medium">{viewYear}</span>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="h-7 w-7"
-            onClick={() => setViewYear(y => y + 1)}
-          >
-            ›
-          </Button>
+          <Button type="button" variant="outline" size="icon" className="h-7 w-7"
+            onClick={() => setViewYear(y => y + 1)}>›</Button>
         </div>
-        {/* Grid de meses */}
         <div className="grid grid-cols-3 gap-1">
           {MESES.map((m) => {
             const isSelected = value &&
               value.getMonth() === m.value &&
               value.getFullYear() === viewYear;
             return (
-              <Button
-                key={m.value}
-                type="button"
+              <Button key={m.value} type="button"
                 variant={isSelected ? 'default' : 'ghost'}
                 className="w-full text-sm capitalize"
-                onClick={() => handleMonthSelect(m.value)}
-              >
+                onClick={() => handleMonthSelect(m.value)}>
                 {m.label.slice(0, 3)}
               </Button>
             );
@@ -125,6 +113,12 @@ const SEMAFORO_COLORS = {
   rojo: 'bg-red-500',
 };
 
+const SEMAFORO_HEX = {
+  verde: '#22c55e',
+  amarillo: '#facc15',
+  rojo: '#ef4444',
+};
+
 const SEMAFORO_LABELS = {
   verde: 'Verde',
   amarillo: 'Amarillo',
@@ -132,6 +126,12 @@ const SEMAFORO_LABELS = {
 };
 
 const periodoLabel = (periodo: string) => {
+  const [a, m] = periodo.split('-');
+  const mes = MESES.find(x => x.value === parseInt(m) - 1)?.label ?? m;
+  return `${mes.slice(0, 3)} ${a}`;
+};
+
+const periodoLabelFull = (periodo: string) => {
   const [a, m] = periodo.split('-');
   const mes = MESES.find(x => x.value === parseInt(m) - 1)?.label ?? m;
   return `${mes} ${a}`;
@@ -222,6 +222,16 @@ export default function IndicadorDetallePage() {
     );
   }
 
+  // Preparar datos para la gráfica — ordenar por período ascendente
+  const datosGrafica = [...mediciones]
+    .filter(m => m.periodo?.match(/^\d{4}-\d{2}$/))
+    .sort((a, b) => a.periodo.localeCompare(b.periodo))
+    .map(m => ({
+      periodo: periodoLabel(m.periodo),
+      valor: m.valor,
+      semaforo: m.semaforo,
+    }));
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-4">
@@ -244,7 +254,49 @@ export default function IndicadorDetallePage() {
         </TabsList>
 
         <TabsContent value="seguimiento" className="mt-4">
-          <p className="text-muted-foreground text-sm">Gráfica de seguimiento próximamente.</p>
+          {datosGrafica.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No hay mediciones para mostrar la gráfica.</p>
+          ) : (
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-1 bg-orange-400 inline-block rounded" />
+                  Meta: {indicador.meta}{indicador.unidadMedida}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-sm bg-green-500 inline-block" /> Verde
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-sm bg-yellow-400 inline-block" /> Amarillo
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-sm bg-red-500 inline-block" /> Rojo
+                </span>
+              </div>
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart data={datosGrafica} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="periodo" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip
+                    formatter={(value) => [`${value}${indicador.unidadMedida}`, 'Valor']}
+                  />
+                  <ReferenceLine
+                    y={indicador.meta}
+                    stroke="#f97316"
+                    strokeDasharray="6 3"
+                    strokeWidth={2}
+                    label={{ value: `Meta ${indicador.meta}${indicador.unidadMedida}`, position: 'insideTopRight', fontSize: 11, fill: '#f97316' }}
+                  />
+                  <Bar dataKey="valor" radius={[4, 4, 0, 0]}>
+                    {datosGrafica.map((entry, index) => (
+                      <Cell key={index} fill={SEMAFORO_HEX[entry.semaforo]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="ficha" className="mt-4">
@@ -259,7 +311,7 @@ export default function IndicadorDetallePage() {
                   ['Unidad de medida', indicador.unidadMedida],
                   ['Frecuencia', indicador.frecuencia],
                   ['Finalidad', indicador.finalidad],
-                  ['Meta', indicador.meta],
+                  ['Meta', `${indicador.meta}${indicador.unidadMedida}`],
                   ['Descripción', indicador.descripcion],
                 ].map(([label, value]) => (
                   <tr key={label as string} className="border-b last:border-0">
@@ -274,15 +326,18 @@ export default function IndicadorDetallePage() {
 
         <TabsContent value="analisis" className="mt-4">
           <div className="flex flex-col gap-4">
-            {mediciones.length === 0 && (
+            {mediciones.filter(m => m.periodo?.match(/^\d{4}-\d{2}$/)).length === 0 && (
               <p className="text-muted-foreground text-sm">No hay mediciones registradas aún.</p>
             )}
-            {mediciones.map((m) => (
+            {[...mediciones]
+              .filter(m => m.periodo?.match(/^\d{4}-\d{2}$/))
+              .sort((a, b) => b.periodo.localeCompare(a.periodo))
+              .map((m) => (
               <div key={m.id} className="border rounded-lg p-4 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span className={`w-3 h-3 rounded-full ${SEMAFORO_COLORS[m.semaforo]}`} />
-                    <span className="font-semibold">{periodoLabel(m.periodo)}</span>
+                    <span className="font-semibold">{periodoLabelFull(m.periodo)}</span>
                     <span className="text-lg font-bold">{m.valor}{indicador.unidadMedida}</span>
                     <span className="text-sm text-muted-foreground">(Meta {indicador.meta}{indicador.unidadMedida})</span>
                   </div>
@@ -352,7 +407,7 @@ export default function IndicadorDetallePage() {
               <p className="text-muted-foreground text-sm">No hay mediciones registradas.</p>
             )}
 
-            {mediciones.length > 0 && (
+            {mediciones.filter(m => m.periodo?.match(/^\d{4}-\d{2}$/)).length > 0 && (
               <div className="rounded-md border overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
@@ -364,9 +419,12 @@ export default function IndicadorDetallePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {mediciones.map((m) => (
+                    {[...mediciones]
+                      .filter(m => m.periodo?.match(/^\d{4}-\d{2}$/))
+                      .sort((a, b) => b.periodo.localeCompare(a.periodo))
+                      .map((m) => (
                       <tr key={m.id} className="border-b last:border-0">
-                        <td className="px-4 py-3 font-mono capitalize">{periodoLabel(m.periodo)}</td>
+                        <td className="px-4 py-3 capitalize">{periodoLabelFull(m.periodo)}</td>
                         <td className="px-4 py-3 font-bold">{m.valor}{indicador.unidadMedida}</td>
                         <td className="px-4 py-3">
                           <span className="inline-flex items-center gap-1.5 text-xs font-medium">
