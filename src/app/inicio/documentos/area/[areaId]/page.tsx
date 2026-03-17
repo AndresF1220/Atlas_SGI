@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import CaracterizacionPanel from '@/components/dashboard/CaracterizacionPanel';
 import ProcesoCards from '@/components/dashboard/ProcesoCards';
 import RepoEmbed from '@/components/dashboard/RepoEmbed';
@@ -13,9 +13,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/lib/auth';
 import { useIndicadoresPorEntidad } from '@/hooks/use-indicadores';
 import FormIndicador from '@/components/indicadores/FormIndicador';
+import TablaIndicadores from '@/components/indicadores/TablaIndicadores';
 
 export default function AreaIdPage() {
   const params = useParams();
+  const router = useRouter();
   const areaId = params.areaId as string;
   const { area, isLoading: isLoadingArea } = useArea(areaId);
   const { procesos, isLoading: isLoadingProcesos } = useProcesos(areaId);
@@ -99,8 +101,13 @@ export default function AreaIdPage() {
               </Button>
             )}
           </div>
-          {!hasIndicadores && !isAddingIndicador && (
-            <p className="text-muted-foreground text-sm">No hay indicadores registrados.</p>
+          {!isAddingIndicador && (
+            <TablaIndicadores
+              indicadores={indicadores ?? []}
+              onVerDetalle={(id) =>
+                router.push(`/inicio/documentos/area/${areaId}/proceso/${areaId}/indicador/${id}`)
+              }
+            />
           )}
         </div>
       )}
