@@ -12,6 +12,7 @@ import { PlusCircle } from 'lucide-react';
 import { AddEntityForm } from '@/components/dashboard/AddEntityForm';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/lib/auth';
+import { useIndicadoresPorEntidad } from '@/hooks/use-indicadores';
 
 export default function AreaIdPage() {
   const params = useParams();
@@ -20,6 +21,8 @@ export default function AreaIdPage() {
   const { procesos, isLoading: isLoadingProcesos } = useProcesos(areaId);
   const { userRole } = useAuth();
   const [isAdding, setIsAdding] = useState(false);
+  const { indicadores } = useIndicadoresPorEntidad(areaId);
+  const hasIndicadores = indicadores && indicadores.length > 0;
 
   const isLoading = isLoadingArea || isLoadingProcesos;
   const canAdd = userRole === 'superadmin' || userRole === 'admin';
@@ -81,6 +84,23 @@ export default function AreaIdPage() {
             )}
           </div>
           <ProcesoCards areaId={area.id} procesos={procesos} />
+        </div>
+      )}
+
+      {(hasIndicadores || userRole === 'superadmin') && (
+        <div className="flex flex-col gap-4">
+          <div className="flex justify-between items-center w-full border-b pb-2">
+            <h2 className="text-xl font-semibold tracking-tight font-headline">Indicadores</h2>
+            {userRole === 'superadmin' && (
+              <Button>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Agregar Indicador
+              </Button>
+            )}
+          </div>
+          {!hasIndicadores && (
+            <p className="text-muted-foreground text-sm">No hay indicadores registrados.</p>
+          )}
         </div>
       )}
 

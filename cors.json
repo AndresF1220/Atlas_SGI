@@ -1,8 +1,1 @@
-[
-  {
-    "origin": ["*"],
-    "method": ["GET", "HEAD", "PUT", "POST", "DELETE"],
-    "responseHeader": ["Content-Type", "access-control-allow-origin"],
-    "maxAgeSeconds": 3600
-  }
-]
+[{"origin": ["https://atlas-sgi.vercel.app", "http://localhost:9002"], "method": ["GET", "POST", "PUT", "DELETE"], "maxAgeSeconds": 3600}]

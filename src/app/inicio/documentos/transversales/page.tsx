@@ -71,7 +71,7 @@ export default function TransversalesAreasPage() {
       <div className="flex justify-between items-center">
         <div>
             <h1 className="text-3xl font-bold tracking-tight font-headline">Procesos Transversales</h1>
-            <p className="text-muted-foreground">Estas áreas dan soporte a toda la organización.</p>
+            <p className="text-muted-foreground">Estos p    rocesos dan soporte a toda la organización.</p>
         </div>
          {userRole === 'superadmin' && (
             <AddEntityForm 

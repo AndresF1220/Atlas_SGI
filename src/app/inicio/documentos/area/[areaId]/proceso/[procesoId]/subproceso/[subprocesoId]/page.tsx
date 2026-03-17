@@ -7,16 +7,22 @@ import RepoEmbed from '@/components/dashboard/RepoEmbed';
 import { useSubproceso, useProceso, useArea } from '@/hooks/use-areas-data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/lib/auth';
+import { useIndicadoresPorEntidad } from '@/hooks/use-indicadores';
+import { Button } from '@/components/ui/button';
+import { PlusCircle } from 'lucide-react';
 
 export default function SubprocesoIdPage() {
   const params = useParams();
   const areaId = params.areaId as string;
   const procesoId = params.procesoId as string;
   const subprocesoId = params.subprocesoId as string;
+  const { userRole } = useAuth();
 
   const { area, isLoading: isLoadingArea } = useArea(areaId);
   const { proceso, isLoading: isLoadingProceso } = useProceso(areaId, procesoId);
   const { subproceso, isLoading: isLoadingSubproceso } = useSubproceso(areaId, procesoId, subprocesoId);
+  const { indicadores } = useIndicadoresPorEntidad(subprocesoId);
+  const hasIndicadores = indicadores && indicadores.length > 0;
 
   const isLoading = isLoadingArea || isLoadingProceso || isLoadingSubproceso;
 
@@ -47,6 +53,22 @@ export default function SubprocesoIdPage() {
         procesoId={proceso.id}
       />
 
+      {(hasIndicadores || userRole === 'superadmin') && (
+        <div className="flex flex-col gap-4">
+          <div className="flex justify-between items-center w-full border-b pb-2">
+            <h2 className="text-xl font-semibold tracking-tight font-headline">Indicadores</h2>
+            {userRole === 'superadmin' && (
+              <Button>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Agregar Indicador
+              </Button>
+            )}
+          </div>
+          {!hasIndicadores && (
+            <p className="text-muted-foreground text-sm">No hay indicadores registrados.</p>
+          )}
+        </div>
+      )}
 
       <RepoEmbed areaId={areaId} procesoId={procesoId} subprocesoId={subproceso.id} />
     </div>
