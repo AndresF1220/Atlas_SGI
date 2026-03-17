@@ -10,9 +10,101 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, PlusCircle } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ArrowLeft, CalendarIcon, PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/auth';
+import { cn } from '@/lib/utils';
+import { format, setMonth, setYear } from 'date-fns';
+import { es } from 'date-fns/locale';
+
+const MESES = [
+  { value: 0, label: 'Enero' }, { value: 1, label: 'Febrero' },
+  { value: 2, label: 'Marzo' }, { value: 3, label: 'Abril' },
+  { value: 4, label: 'Mayo' }, { value: 5, label: 'Junio' },
+  { value: 6, label: 'Julio' }, { value: 7, label: 'Agosto' },
+  { value: 8, label: 'Septiembre' }, { value: 9, label: 'Octubre' },
+  { value: 10, label: 'Noviembre' }, { value: 11, label: 'Diciembre' },
+];
+
+const ANIOS = Array.from({ length: 6 }, (_, i) =>
+  new Date().getFullYear() - 2 + i
+);
+
+function MonthYearPicker({
+  value,
+  onChange,
+}: {
+  value: Date | undefined;
+  onChange: (date: Date) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [viewYear, setViewYear] = useState(new Date().getFullYear());
+
+  const handleMonthSelect = (mes: number) => {
+    const fecha = setMonth(setYear(new Date(), viewYear), mes);
+    onChange(fecha);
+    setOpen(false);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          className={cn('w-full justify-start text-left font-normal', !value && 'text-muted-foreground')}
+        >
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {value ? format(value, 'MMMM yyyy', { locale: es }) : 'Seleccione período'}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-3">
+        {/* Selector de año */}
+        <div className="flex justify-between items-center mb-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => setViewYear(y => y - 1)}
+          >
+            ‹
+          </Button>
+          <span className="text-sm font-medium">{viewYear}</span>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => setViewYear(y => y + 1)}
+          >
+            ›
+          </Button>
+        </div>
+        {/* Grid de meses */}
+        <div className="grid grid-cols-3 gap-1">
+          {MESES.map((m) => {
+            const isSelected = value &&
+              value.getMonth() === m.value &&
+              value.getFullYear() === viewYear;
+            return (
+              <Button
+                key={m.value}
+                type="button"
+                variant={isSelected ? 'default' : 'ghost'}
+                className="w-full text-sm capitalize"
+                onClick={() => handleMonthSelect(m.value)}
+              >
+                {m.label.slice(0, 3)}
+              </Button>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 function calcularSemaforo(valor: number, indicador: Indicador): 'verde' | 'amarillo' | 'rojo' {
   const { finalidad, meta } = indicador;
@@ -39,6 +131,12 @@ const SEMAFORO_LABELS = {
   rojo: 'Rojo',
 };
 
+const periodoLabel = (periodo: string) => {
+  const [a, m] = periodo.split('-');
+  const mes = MESES.find(x => x.value === parseInt(m) - 1)?.label ?? m;
+  return `${mes} ${a}`;
+};
+
 export default function IndicadorDetallePage() {
   const params = useParams();
   const router = useRouter();
@@ -52,8 +150,7 @@ export default function IndicadorDetallePage() {
   const [isAddingMedicion, setIsAddingMedicion] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Form state
-  const [periodo, setPeriodo] = useState('');
+  const [periodoDate, setPeriodoDate] = useState<Date | undefined>();
   const [valor, setValor] = useState<number | ''>('');
   const [observacion, setObservacion] = useState('');
 
@@ -69,10 +166,14 @@ export default function IndicadorDetallePage() {
   }, [indicadorId]);
 
   const handleGuardarMedicion = async () => {
-    if (!indicador || valor === '' || !periodo) {
+    if (!indicador || valor === '' || !periodoDate) {
       toast({ title: 'Error', description: 'Complete período y valor.', variant: 'destructive' });
       return;
     }
+    const mes = String(periodoDate.getMonth() + 1).padStart(2, '0');
+    const anio = periodoDate.getFullYear();
+    const periodo = `${anio}-${mes}`;
+
     setIsSaving(true);
     try {
       const semaforo = calcularSemaforo(Number(valor), indicador);
@@ -89,10 +190,9 @@ export default function IndicadorDetallePage() {
       });
       toast({ title: 'Medición registrada correctamente.' });
       setIsAddingMedicion(false);
-      setPeriodo('');
+      setPeriodoDate(undefined);
       setValor('');
       setObservacion('');
-      // Reload mediciones
       const meds = await listarMediciones(indicadorId);
       setMediciones(meds);
     } catch {
@@ -182,7 +282,7 @@ export default function IndicadorDetallePage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span className={`w-3 h-3 rounded-full ${SEMAFORO_COLORS[m.semaforo]}`} />
-                    <span className="font-semibold">{m.periodo}</span>
+                    <span className="font-semibold">{periodoLabel(m.periodo)}</span>
                     <span className="text-lg font-bold">{m.valor}{indicador.unidadMedida}</span>
                     <span className="text-sm text-muted-foreground">(Meta {indicador.meta}{indicador.unidadMedida})</span>
                   </div>
@@ -213,13 +313,8 @@ export default function IndicadorDetallePage() {
                 <h4 className="font-medium">Nueva medición</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <Label htmlFor="periodo">Período</Label>
-                    <Input
-                      id="periodo"
-                      placeholder="Ej: 2024-03"
-                      value={periodo}
-                      onChange={(e) => setPeriodo(e.target.value)}
-                    />
+                    <Label>Período</Label>
+                    <MonthYearPicker value={periodoDate} onChange={setPeriodoDate} />
                   </div>
                   <div className="space-y-1">
                     <Label htmlFor="valor">Valor ({indicador.unidadMedida})</Label>
@@ -271,10 +366,10 @@ export default function IndicadorDetallePage() {
                   <tbody>
                     {mediciones.map((m) => (
                       <tr key={m.id} className="border-b last:border-0">
-                        <td className="px-4 py-3 font-mono">{m.periodo}</td>
+                        <td className="px-4 py-3 font-mono capitalize">{periodoLabel(m.periodo)}</td>
                         <td className="px-4 py-3 font-bold">{m.valor}{indicador.unidadMedida}</td>
                         <td className="px-4 py-3">
-                          <span className={`inline-flex items-center gap-1.5 text-xs font-medium`}>
+                          <span className="inline-flex items-center gap-1.5 text-xs font-medium">
                             <span className={`w-2.5 h-2.5 rounded-full ${SEMAFORO_COLORS[m.semaforo]}`} />
                             {SEMAFORO_LABELS[m.semaforo]}
                           </span>
