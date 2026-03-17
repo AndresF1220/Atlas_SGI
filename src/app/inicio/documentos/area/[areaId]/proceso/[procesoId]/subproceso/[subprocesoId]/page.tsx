@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import CaracterizacionPanel from '@/components/dashboard/CaracterizacionPanel';
 import RepoEmbed from '@/components/dashboard/RepoEmbed';
 import { useSubproceso, useProceso, useArea } from '@/hooks/use-areas-data';
@@ -11,9 +11,11 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { useState } from 'react';
 import FormIndicador from '@/components/indicadores/FormIndicador';
+import TablaIndicadores from '@/components/indicadores/TablaIndicadores';
 
 export default function SubprocesoIdPage() {
   const params = useParams();
+  const router = useRouter();
   const areaId = params.areaId as string;
   const procesoId = params.procesoId as string;
   const subprocesoId = params.subprocesoId as string;
@@ -66,8 +68,13 @@ export default function SubprocesoIdPage() {
               </Button>
             )}
           </div>
-          {!hasIndicadores && !isAddingIndicador && (
-            <p className="text-muted-foreground text-sm">No hay indicadores registrados.</p>
+          {!isAddingIndicador && (
+            <TablaIndicadores
+              indicadores={indicadores ?? []}
+              onVerDetalle={(id) =>
+                router.push(`/inicio/documentos/area/${areaId}/proceso/${procesoId}/indicador/${id}`)
+              }
+            />
           )}
         </div>
       )}

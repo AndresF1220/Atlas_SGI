@@ -70,7 +70,7 @@ export function FormIndicador({ procesoId, subprocesoId, onSuccess, onCancel }: 
       frecuencia,
       meta: Number(meta),
       descripcion,
-      procesoId,
+      procesoId: subprocesoId ?? procesoId,
       ...(subprocesoId && { subprocesoId }),
       // Default values for fields not in this form
       diaCorte: 'Último día del mes', 
