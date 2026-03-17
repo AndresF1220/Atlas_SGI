@@ -2,27 +2,105 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { obtenerIndicador } from '@/lib/indicadores';
-import { Indicador } from '@/types/indicadores';
+import { obtenerIndicador, registrarMedicion, listarMediciones } from '@/lib/indicadores';
+import { Indicador, Medicion } from '@/types/indicadores';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, PlusCircle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/lib/auth';
+
+function calcularSemaforo(valor: number, indicador: Indicador): 'verde' | 'amarillo' | 'rojo' {
+  const { finalidad, meta } = indicador;
+  if (finalidad === 'maximizar') {
+    if (valor >= meta) return 'verde';
+    if (valor >= meta * 0.8) return 'amarillo';
+    return 'rojo';
+  } else {
+    if (valor <= meta) return 'verde';
+    if (valor <= meta * 1.2) return 'amarillo';
+    return 'rojo';
+  }
+}
+
+const SEMAFORO_COLORS = {
+  verde: 'bg-green-500',
+  amarillo: 'bg-yellow-400',
+  rojo: 'bg-red-500',
+};
+
+const SEMAFORO_LABELS = {
+  verde: 'Verde',
+  amarillo: 'Amarillo',
+  rojo: 'Rojo',
+};
 
 export default function IndicadorDetallePage() {
   const params = useParams();
   const router = useRouter();
+  const { toast } = useToast();
+  const { user, userRole } = useAuth();
   const indicadorId = params.indicadorId as string;
 
   const [indicador, setIndicador] = useState<Indicador | null>(null);
+  const [mediciones, setMediciones] = useState<Medicion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAddingMedicion, setIsAddingMedicion] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Form state
+  const [periodo, setPeriodo] = useState('');
+  const [valor, setValor] = useState<number | ''>('');
+  const [observacion, setObservacion] = useState('');
 
   useEffect(() => {
     if (!indicadorId) return;
-    obtenerIndicador(indicadorId)
-      .then(setIndicador)
-      .finally(() => setIsLoading(false));
+    Promise.all([
+      obtenerIndicador(indicadorId),
+      listarMediciones(indicadorId),
+    ]).then(([ind, meds]) => {
+      setIndicador(ind);
+      setMediciones(meds);
+    }).finally(() => setIsLoading(false));
   }, [indicadorId]);
+
+  const handleGuardarMedicion = async () => {
+    if (!indicador || valor === '' || !periodo) {
+      toast({ title: 'Error', description: 'Complete período y valor.', variant: 'destructive' });
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const semaforo = calcularSemaforo(Number(valor), indicador);
+      await registrarMedicion({
+        indicadorId,
+        periodo,
+        valor: Number(valor),
+        variables: {},
+        semaforo,
+        observacion,
+        responsableId: user?.uid ?? '',
+        responsableNombre: user?.displayName ?? '',
+        responsableCargo: '',
+      });
+      toast({ title: 'Medición registrada correctamente.' });
+      setIsAddingMedicion(false);
+      setPeriodo('');
+      setValor('');
+      setObservacion('');
+      // Reload mediciones
+      const meds = await listarMediciones(indicadorId);
+      setMediciones(meds);
+    } catch {
+      toast({ title: 'Error', description: 'No se pudo guardar la medición.', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -95,11 +173,120 @@ export default function IndicadorDetallePage() {
         </TabsContent>
 
         <TabsContent value="analisis" className="mt-4">
-          <p className="text-muted-foreground text-sm">Historial de análisis próximamente.</p>
+          <div className="flex flex-col gap-4">
+            {mediciones.length === 0 && (
+              <p className="text-muted-foreground text-sm">No hay mediciones registradas aún.</p>
+            )}
+            {mediciones.map((m) => (
+              <div key={m.id} className="border rounded-lg p-4 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className={`w-3 h-3 rounded-full ${SEMAFORO_COLORS[m.semaforo]}`} />
+                    <span className="font-semibold">{m.periodo}</span>
+                    <span className="text-lg font-bold">{m.valor}{indicador.unidadMedida}</span>
+                    <span className="text-sm text-muted-foreground">(Meta {indicador.meta}{indicador.unidadMedida})</span>
+                  </div>
+                  <span className="text-sm text-muted-foreground">{m.responsableNombre}</span>
+                </div>
+                {m.observacion && (
+                  <p className="text-sm text-muted-foreground italic">"{m.observacion}"</p>
+                )}
+              </div>
+            ))}
+          </div>
         </TabsContent>
 
         <TabsContent value="mediciones" className="mt-4">
-          <p className="text-muted-foreground text-sm">Registro de mediciones próximamente.</p>
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-between items-center border-b pb-2">
+              <h3 className="font-semibold">Registro de mediciones</h3>
+              {userRole === 'superadmin' && !isAddingMedicion && (
+                <Button size="sm" onClick={() => setIsAddingMedicion(true)}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Registrar medición
+                </Button>
+              )}
+            </div>
+
+            {isAddingMedicion && (
+              <div className="border rounded-lg p-4 flex flex-col gap-4">
+                <h4 className="font-medium">Nueva medición</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="periodo">Período</Label>
+                    <Input
+                      id="periodo"
+                      placeholder="Ej: 2024-03"
+                      value={periodo}
+                      onChange={(e) => setPeriodo(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="valor">Valor ({indicador.unidadMedida})</Label>
+                    <Input
+                      id="valor"
+                      type="number"
+                      placeholder="Valor numérico"
+                      value={valor}
+                      onChange={(e) => setValor(e.target.value === '' ? '' : Number(e.target.value))}
+                    />
+                  </div>
+                  <div className="space-y-1 col-span-2">
+                    <Label htmlFor="observacion">Observación / Análisis</Label>
+                    <Textarea
+                      id="observacion"
+                      placeholder="Describa el comportamiento del indicador en este período..."
+                      rows={3}
+                      value={observacion}
+                      onChange={(e) => setObservacion(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="ghost" onClick={() => setIsAddingMedicion(false)} disabled={isSaving}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleGuardarMedicion} disabled={isSaving}>
+                    {isSaving ? 'Guardando...' : 'Guardar medición'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {mediciones.length === 0 && !isAddingMedicion && (
+              <p className="text-muted-foreground text-sm">No hay mediciones registradas.</p>
+            )}
+
+            {mediciones.length > 0 && (
+              <div className="rounded-md border overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="px-4 py-3 text-left font-medium">Período</th>
+                      <th className="px-4 py-3 text-left font-medium">Valor</th>
+                      <th className="px-4 py-3 text-left font-medium">Semáforo</th>
+                      <th className="px-4 py-3 text-left font-medium">Responsable</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {mediciones.map((m) => (
+                      <tr key={m.id} className="border-b last:border-0">
+                        <td className="px-4 py-3 font-mono">{m.periodo}</td>
+                        <td className="px-4 py-3 font-bold">{m.valor}{indicador.unidadMedida}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center gap-1.5 text-xs font-medium`}>
+                            <span className={`w-2.5 h-2.5 rounded-full ${SEMAFORO_COLORS[m.semaforo]}`} />
+                            {SEMAFORO_LABELS[m.semaforo]}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">{m.responsableNombre}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
     </div>

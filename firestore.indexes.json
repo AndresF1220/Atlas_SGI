@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "mediciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "indicadorId", "order": "ASCENDING" },
+        { "fieldPath": "creadoEn", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

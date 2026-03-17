@@ -96,7 +96,7 @@ export async function listarMediciones(indicadorId: string): Promise<Medicion[]>
         const q = query(
             collection(db, 'mediciones'),
             where('indicadorId', '==', indicadorId),
-            orderBy('fecha', 'desc')
+            orderBy('creadoEn', 'desc')
         );
         const querySnapshot = await getDocs(q);
         return querySnapshot.docs.map(doc => fromFirestore<Medicion>(doc));
