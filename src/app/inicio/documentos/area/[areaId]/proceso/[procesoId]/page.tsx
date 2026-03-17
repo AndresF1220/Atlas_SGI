@@ -2,7 +2,6 @@
 
 import { useParams } from 'next/navigation';
 import CaracterizacionPanel from '@/components/dashboard/CaracterizacionPanel';
-import EntradasSalidasPanel from '@/components/dashboard/EntradasSalidasPanel';
 import ProcesoCards from '@/components/dashboard/ProcesoCards';
 import RepoEmbed from '@/components/dashboard/RepoEmbed';
 import { useProceso, useArea, useSubprocesos } from '@/hooks/use-areas-data';
@@ -13,12 +12,14 @@ import { AddEntityForm } from '@/components/dashboard/AddEntityForm';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/lib/auth';
 import { useIndicadoresPorEntidad } from '@/hooks/use-indicadores';
+import FormIndicador from '@/components/indicadores/FormIndicador';
 
 export default function ProcesoIdPage() {
   const params = useParams();
   const areaId = params.areaId as string;
   const procesoId = params.procesoId as string;
   const [isAdding, setIsAdding] = useState(false);
+  const [isAddingIndicador, setIsAddingIndicador] = useState(false);
   const { userRole } = useAuth();
 
   const { area, isLoading: isLoadingArea } = useArea(areaId);
@@ -100,16 +101,24 @@ export default function ProcesoIdPage() {
           <div className="flex justify-between items-center w-full border-b pb-2">
             <h2 className="text-xl font-semibold tracking-tight font-headline">Indicadores</h2>
             {userRole === 'superadmin' && (
-              <Button>
+              <Button onClick={() => setIsAddingIndicador(true)}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Agregar Indicador
               </Button>
             )}
           </div>
-          {!hasIndicadores && (
+          {!hasIndicadores && !isAddingIndicador && (
             <p className="text-muted-foreground text-sm">No hay indicadores registrados.</p>
           )}
         </div>
+      )}
+
+      {isAddingIndicador && (
+        <FormIndicador
+          procesoId={procesoId}
+          onSuccess={() => setIsAddingIndicador(false)}
+          onCancel={() => setIsAddingIndicador(false)}
+        />
       )}
 
       <RepoEmbed areaId={areaId} procesoId={procesoId} />

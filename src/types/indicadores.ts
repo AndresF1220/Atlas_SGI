@@ -15,7 +15,7 @@ export interface Indicador {
   fuenteNumerador: string
   fuenteDenominador: string
   procesoId: string
-  subprocesoId: string
+  subprocesoId?: string
   categorias: string[]
   atributosCalidad: string[]
   controlCambios: string

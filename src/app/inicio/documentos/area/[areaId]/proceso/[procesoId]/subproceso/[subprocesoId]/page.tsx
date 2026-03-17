@@ -2,7 +2,6 @@
 
 import { useParams } from 'next/navigation';
 import CaracterizacionPanel from '@/components/dashboard/CaracterizacionPanel';
-import EntradasSalidasPanel from '@/components/dashboard/EntradasSalidasPanel';
 import RepoEmbed from '@/components/dashboard/RepoEmbed';
 import { useSubproceso, useProceso, useArea } from '@/hooks/use-areas-data';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -10,6 +9,8 @@ import { useAuth } from '@/lib/auth';
 import { useIndicadoresPorEntidad } from '@/hooks/use-indicadores';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
+import { useState } from 'react';
+import FormIndicador from '@/components/indicadores/FormIndicador';
 
 export default function SubprocesoIdPage() {
   const params = useParams();
@@ -17,6 +18,7 @@ export default function SubprocesoIdPage() {
   const procesoId = params.procesoId as string;
   const subprocesoId = params.subprocesoId as string;
   const { userRole } = useAuth();
+  const [isAddingIndicador, setIsAddingIndicador] = useState(false);
 
   const { area, isLoading: isLoadingArea } = useArea(areaId);
   const { proceso, isLoading: isLoadingProceso } = useProceso(areaId, procesoId);
@@ -58,16 +60,25 @@ export default function SubprocesoIdPage() {
           <div className="flex justify-between items-center w-full border-b pb-2">
             <h2 className="text-xl font-semibold tracking-tight font-headline">Indicadores</h2>
             {userRole === 'superadmin' && (
-              <Button>
+              <Button onClick={() => setIsAddingIndicador(true)}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Agregar Indicador
               </Button>
             )}
           </div>
-          {!hasIndicadores && (
+          {!hasIndicadores && !isAddingIndicador && (
             <p className="text-muted-foreground text-sm">No hay indicadores registrados.</p>
           )}
         </div>
+      )}
+
+      {isAddingIndicador && (
+        <FormIndicador
+          procesoId={procesoId}
+          subprocesoId={subprocesoId}
+          onSuccess={() => setIsAddingIndicador(false)}
+          onCancel={() => setIsAddingIndicador(false)}
+        />
       )}
 
       <RepoEmbed areaId={areaId} procesoId={procesoId} subprocesoId={subproceso.id} />
