@@ -9,6 +9,8 @@ export interface Indicador {
   frecuencia: 'mensual' | 'bimestral' | 'trimestral' | 'semestral' | 'anual'
   diaCorte: string
   meta: number
+  verdeMax?: number
+  amarilloMax?: number
   formula: string
   descripcion: string
   interpretacion: string

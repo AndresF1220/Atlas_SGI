@@ -95,7 +95,22 @@ function MonthYearPicker({
 }
 
 function calcularSemaforo(valor: number, indicador: Indicador): 'verde' | 'amarillo' | 'rojo' {
-  const { finalidad, meta } = indicador;
+  const { finalidad, meta, verdeMax, amarilloMax } = indicador;
+
+  // Si tiene rangos configurados, usarlos
+  if (verdeMax !== undefined && amarilloMax !== undefined && (verdeMax > 0 || amarilloMax > 0)) {
+    if (finalidad === 'maximizar') {
+      if (valor >= verdeMax) return 'verde';
+      if (valor >= amarilloMax) return 'amarillo';
+      return 'rojo';
+    } else {
+      if (valor <= verdeMax) return 'verde';
+      if (valor <= amarilloMax) return 'amarillo';
+      return 'rojo';
+    }
+  }
+
+  // Fallback: calcular basado en meta si no hay rangos configurados
   if (finalidad === 'maximizar') {
     if (valor >= meta) return 'verde';
     if (valor >= meta * 0.8) return 'amarillo';
@@ -222,7 +237,6 @@ export default function IndicadorDetallePage() {
     );
   }
 
-  // Preparar datos para la gráfica — ordenar por período ascendente
   const datosGrafica = [...mediciones]
     .filter(m => m.periodo?.match(/^\d{4}-\d{2}$/))
     .sort((a, b) => a.periodo.localeCompare(b.periodo))
@@ -312,6 +326,8 @@ export default function IndicadorDetallePage() {
                   ['Frecuencia', indicador.frecuencia],
                   ['Finalidad', indicador.finalidad],
                   ['Meta', `${indicador.meta}${indicador.unidadMedida}`],
+                  ['Verde máximo', indicador.verdeMax !== undefined ? `${indicador.verdeMax}${indicador.unidadMedida}` : '—'],
+                  ['Amarillo máximo', indicador.amarilloMax !== undefined ? `${indicador.amarilloMax}${indicador.unidadMedida}` : '—'],
                   ['Descripción', indicador.descripcion],
                 ].map(([label, value]) => (
                   <tr key={label as string} className="border-b last:border-0">

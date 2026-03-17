@@ -59,7 +59,6 @@ export function FormIndicador({ procesoId, subprocesoId, onSuccess, onCancel }: 
     }
     setIsLoading(true);
 
-    // The Indicador type has more fields than the form. We provide defaults for required fields.
     const indicadorData: Omit<Indicador, 'id'> = {
       codigo,
       nombre,
@@ -69,11 +68,12 @@ export function FormIndicador({ procesoId, subprocesoId, onSuccess, onCancel }: 
       finalidad,
       frecuencia,
       meta: Number(meta),
+      verdeMax: verdeMax === '' ? 0 : Number(verdeMax),
+      amarilloMax: amarilloMax === '' ? 0 : Number(amarilloMax),
       descripcion,
       procesoId: subprocesoId ?? procesoId,
       ...(subprocesoId && { subprocesoId }),
-      // Default values for fields not in this form
-      diaCorte: 'Último día del mes', 
+      diaCorte: 'Último día del mes',
       formula: '',
       interpretacion: '',
       fuenteNumerador: '',
@@ -147,7 +147,7 @@ export function FormIndicador({ procesoId, subprocesoId, onSuccess, onCancel }: 
               </div>
               <div className="space-y-1 col-span-2">
                 <Label htmlFor="unidadMedida">Unidad de medida</Label>
-                 <Select value={unidadMedida} onValueChange={(v) => setUnidadMedida(v)}>
+                <Select value={unidadMedida} onValueChange={(v) => setUnidadMedida(v)}>
                   <SelectTrigger id="unidadMedida"><SelectValue placeholder="Seleccione unidad" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="%">%</SelectItem>
