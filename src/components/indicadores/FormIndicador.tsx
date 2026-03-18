@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { crearIndicador } from '@/lib/indicadores';
+import { crearIndicador, actualizarIndicador } from '@/lib/indicadores';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,25 +27,27 @@ import { Indicador } from '@/types/indicadores';
 interface FormIndicadorProps {
   procesoId: string;
   subprocesoId?: string;
+  indicadorExistente?: Indicador;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
 
-export function FormIndicador({ procesoId, subprocesoId, onSuccess, onCancel }: FormIndicadorProps) {
+export function FormIndicador({ procesoId, subprocesoId, indicadorExistente, onSuccess, onCancel }: FormIndicadorProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const isEditing = !!indicadorExistente;
 
-  const [codigo, setCodigo] = useState('');
-  const [nombre, setNombre] = useState('');
-  const [tipo, setTipo] = useState<'indicador' | 'variable'>('indicador');
-  const [clase, setClase] = useState('Eficacia');
-  const [unidadMedida, setUnidadMedida] = useState('%');
-  const [descripcion, setDescripcion] = useState('');
-  const [frecuencia, setFrecuencia] = useState<'mensual' | 'bimestral' | 'trimestral' | 'semestral' | 'anual'>('mensual');
-  const [finalidad, setFinalidad] = useState<'minimizar' | 'maximizar'>('maximizar');
-  const [meta, setMeta] = useState<number | ''>(0);
-  const [verdeMax, setVerdeMax] = useState<number | ''>(0);
-  const [amarilloMax, setAmarilloMax] = useState<number | ''>(0);
+  const [codigo, setCodigo] = useState(indicadorExistente?.codigo ?? '');
+  const [nombre, setNombre] = useState(indicadorExistente?.nombre ?? '');
+  const [tipo, setTipo] = useState<'indicador' | 'variable'>(indicadorExistente?.tipo ?? 'indicador');
+  const [clase, setClase] = useState(indicadorExistente?.clase ?? 'Eficacia');
+  const [unidadMedida, setUnidadMedida] = useState(indicadorExistente?.unidadMedida ?? '%');
+  const [descripcion, setDescripcion] = useState(indicadorExistente?.descripcion ?? '');
+  const [frecuencia, setFrecuencia] = useState<'mensual' | 'bimestral' | 'trimestral' | 'semestral' | 'anual'>(indicadorExistente?.frecuencia ?? 'mensual');
+  const [finalidad, setFinalidad] = useState<'minimizar' | 'maximizar'>(indicadorExistente?.finalidad ?? 'maximizar');
+  const [meta, setMeta] = useState<number | ''>(indicadorExistente?.meta ?? 0);
+  const [verdeMax, setVerdeMax] = useState<number | ''>(indicadorExistente?.verdeMax ?? 0);
+  const [amarilloMax, setAmarilloMax] = useState<number | ''>(indicadorExistente?.amarilloMax ?? 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,30 +75,32 @@ export function FormIndicador({ procesoId, subprocesoId, onSuccess, onCancel }: 
       descripcion,
       procesoId: subprocesoId ?? procesoId,
       ...(subprocesoId && { subprocesoId }),
-      diaCorte: 'Último día del mes',
-      formula: '',
-      interpretacion: '',
-      fuenteNumerador: '',
-      fuenteDenominador: '',
-      categorias: [],
-      atributosCalidad: [],
-      controlCambios: '',
-      activo: true,
-      permitirPeriodosSinMedicion: false,
+      diaCorte: indicadorExistente?.diaCorte ?? 'Último día del mes',
+      formula: indicadorExistente?.formula ?? '',
+      interpretacion: indicadorExistente?.interpretacion ?? '',
+      fuenteNumerador: indicadorExistente?.fuenteNumerador ?? '',
+      fuenteDenominador: indicadorExistente?.fuenteDenominador ?? '',
+      categorias: indicadorExistente?.categorias ?? [],
+      atributosCalidad: indicadorExistente?.atributosCalidad ?? [],
+      controlCambios: indicadorExistente?.controlCambios ?? '',
+      activo: indicadorExistente?.activo ?? true,
+      permitirPeriodosSinMedicion: indicadorExistente?.permitirPeriodosSinMedicion ?? false,
     };
 
     try {
-      await crearIndicador(indicadorData);
-      toast({
-        title: 'Éxito',
-        description: 'Indicador creado correctamente.',
-      });
+      if (isEditing && indicadorExistente.id) {
+        await actualizarIndicador(indicadorExistente.id, indicadorData);
+        toast({ title: 'Éxito', description: 'Indicador actualizado correctamente.' });
+      } else {
+        await crearIndicador(indicadorData);
+        toast({ title: 'Éxito', description: 'Indicador creado correctamente.' });
+      }
       if (onSuccess) onSuccess();
     } catch (error) {
       console.error(error);
       toast({
         title: 'Error',
-        description: 'No se pudo crear el indicador. Inténtelo de nuevo.',
+        description: `No se pudo ${isEditing ? 'actualizar' : 'crear'} el indicador.`,
         variant: 'destructive',
       });
     } finally {
@@ -108,11 +112,16 @@ export function FormIndicador({ procesoId, subprocesoId, onSuccess, onCancel }: 
     <Card>
       <form onSubmit={handleSubmit}>
         <CardHeader>
-          <CardTitle className="font-headline">Crear Nuevo Indicador</CardTitle>
-          <CardDescription>Complete la información para registrar un nuevo indicador de proceso.</CardDescription>
+          <CardTitle className="font-headline">
+            {isEditing ? 'Editar Indicador' : 'Crear Nuevo Indicador'}
+          </CardTitle>
+          <CardDescription>
+            {isEditing
+              ? 'Modifique la información del indicador.'
+              : 'Complete la información para registrar un nuevo indicador de proceso.'}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Section 1: General Info */}
           <div className="space-y-4 border-t pt-4">
             <h3 className="text-lg font-semibold tracking-tight font-headline">Información General</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -164,7 +173,6 @@ export function FormIndicador({ procesoId, subprocesoId, onSuccess, onCancel }: 
             </div>
           </div>
 
-          {/* Section 2: Measurement */}
           <div className="space-y-4 border-t pt-4">
             <h3 className="text-lg font-semibold tracking-tight font-headline">Medición</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -198,7 +206,6 @@ export function FormIndicador({ procesoId, subprocesoId, onSuccess, onCancel }: 
             </div>
           </div>
 
-          {/* Section 3: Semaphore */}
           <div className="space-y-4 border-t pt-4">
             <h3 className="text-lg font-semibold tracking-tight font-headline">Semáforo</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -216,7 +223,9 @@ export function FormIndicador({ procesoId, subprocesoId, onSuccess, onCancel }: 
         </CardContent>
         <CardFooter className="flex justify-end gap-2">
           <Button type="button" variant="ghost" onClick={onCancel} disabled={isLoading}>Cancelar</Button>
-          <Button type="submit" disabled={isLoading}>{isLoading ? 'Guardando...' : 'Guardar Indicador'}</Button>
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? 'Guardando...' : isEditing ? 'Guardar cambios' : 'Guardar Indicador'}
+          </Button>
         </CardFooter>
       </form>
     </Card>

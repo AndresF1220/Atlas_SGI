@@ -11,23 +11,17 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ArrowLeft, CalendarIcon, PlusCircle } from 'lucide-react';
+import { ArrowLeft, CalendarIcon, PlusCircle, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { format, setMonth, setYear } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ReferenceLine,
-  ResponsiveContainer,
-  Cell,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ReferenceLine, ResponsiveContainer, Cell,
 } from 'recharts';
+import FormIndicador from '@/components/indicadores/FormIndicador';
 
 const MESES = [
   { value: 0, label: 'Enero' }, { value: 1, label: 'Febrero' },
@@ -38,56 +32,39 @@ const MESES = [
   { value: 10, label: 'Noviembre' }, { value: 11, label: 'Diciembre' },
 ];
 
-function MonthYearPicker({
-  value,
-  onChange,
-}: {
-  value: Date | undefined;
-  onChange: (date: Date) => void;
-}) {
+function MonthYearPicker({ value, onChange }: { value: Date | undefined; onChange: (date: Date) => void }) {
   const [open, setOpen] = useState(false);
   const [viewYear, setViewYear] = useState(new Date().getFullYear());
 
   const handleMonthSelect = (mes: number) => {
-    const fecha = setMonth(setYear(new Date(), viewYear), mes);
-    onChange(fecha);
+    onChange(setMonth(setYear(new Date(), viewYear), mes));
     setOpen(false);
   };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          className={cn('w-full justify-start text-left font-normal', !value && 'text-muted-foreground')}
-        >
+        <Button type="button" variant="outline"
+          className={cn('w-full justify-start text-left font-normal', !value && 'text-muted-foreground')}>
           <CalendarIcon className="mr-2 h-4 w-4" />
           {value ? format(value, 'MMMM yyyy', { locale: es }) : 'Seleccione período'}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-3">
         <div className="flex justify-between items-center mb-3">
-          <Button type="button" variant="outline" size="icon" className="h-7 w-7"
-            onClick={() => setViewYear(y => y - 1)}>‹</Button>
+          <Button type="button" variant="outline" size="icon" className="h-7 w-7" onClick={() => setViewYear(y => y - 1)}>‹</Button>
           <span className="text-sm font-medium">{viewYear}</span>
-          <Button type="button" variant="outline" size="icon" className="h-7 w-7"
-            onClick={() => setViewYear(y => y + 1)}>›</Button>
+          <Button type="button" variant="outline" size="icon" className="h-7 w-7" onClick={() => setViewYear(y => y + 1)}>›</Button>
         </div>
         <div className="grid grid-cols-3 gap-1">
-          {MESES.map((m) => {
-            const isSelected = value &&
-              value.getMonth() === m.value &&
-              value.getFullYear() === viewYear;
-            return (
-              <Button key={m.value} type="button"
-                variant={isSelected ? 'default' : 'ghost'}
-                className="w-full text-sm capitalize"
-                onClick={() => handleMonthSelect(m.value)}>
-                {m.label.slice(0, 3)}
-              </Button>
-            );
-          })}
+          {MESES.map((m) => (
+            <Button key={m.value} type="button"
+              variant={value && value.getMonth() === m.value && value.getFullYear() === viewYear ? 'default' : 'ghost'}
+              className="w-full text-sm capitalize"
+              onClick={() => handleMonthSelect(m.value)}>
+              {m.label.slice(0, 3)}
+            </Button>
+          ))}
         </div>
       </PopoverContent>
     </Popover>
@@ -96,8 +73,6 @@ function MonthYearPicker({
 
 function calcularSemaforo(valor: number, indicador: Indicador): 'verde' | 'amarillo' | 'rojo' {
   const { finalidad, meta, verdeMax, amarilloMax } = indicador;
-
-  // Si tiene rangos configurados, usarlos
   if (verdeMax !== undefined && amarilloMax !== undefined && (verdeMax > 0 || amarilloMax > 0)) {
     if (finalidad === 'maximizar') {
       if (valor >= verdeMax) return 'verde';
@@ -109,8 +84,6 @@ function calcularSemaforo(valor: number, indicador: Indicador): 'verde' | 'amari
       return 'rojo';
     }
   }
-
-  // Fallback: calcular basado en meta si no hay rangos configurados
   if (finalidad === 'maximizar') {
     if (valor >= meta) return 'verde';
     if (valor >= meta * 0.8) return 'amarillo';
@@ -122,34 +95,18 @@ function calcularSemaforo(valor: number, indicador: Indicador): 'verde' | 'amari
   }
 }
 
-const SEMAFORO_COLORS = {
-  verde: 'bg-green-500',
-  amarillo: 'bg-yellow-400',
-  rojo: 'bg-red-500',
-};
-
-const SEMAFORO_HEX = {
-  verde: '#22c55e',
-  amarillo: '#facc15',
-  rojo: '#ef4444',
-};
-
-const SEMAFORO_LABELS = {
-  verde: 'Verde',
-  amarillo: 'Amarillo',
-  rojo: 'Rojo',
-};
+const SEMAFORO_COLORS = { verde: 'bg-green-500', amarillo: 'bg-yellow-400', rojo: 'bg-red-500' };
+const SEMAFORO_HEX = { verde: '#22c55e', amarillo: '#facc15', rojo: '#ef4444' };
+const SEMAFORO_LABELS = { verde: 'Verde', amarillo: 'Amarillo', rojo: 'Rojo' };
 
 const periodoLabel = (periodo: string) => {
   const [a, m] = periodo.split('-');
-  const mes = MESES.find(x => x.value === parseInt(m) - 1)?.label ?? m;
-  return `${mes.slice(0, 3)} ${a}`;
+  return `${MESES.find(x => x.value === parseInt(m) - 1)?.label.slice(0, 3) ?? m} ${a}`;
 };
 
 const periodoLabelFull = (periodo: string) => {
   const [a, m] = periodo.split('-');
-  const mes = MESES.find(x => x.value === parseInt(m) - 1)?.label ?? m;
-  return `${mes} ${a}`;
+  return `${MESES.find(x => x.value === parseInt(m) - 1)?.label ?? m} ${a}`;
 };
 
 export default function IndicadorDetallePage() {
@@ -164,6 +121,7 @@ export default function IndicadorDetallePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAddingMedicion, setIsAddingMedicion] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const [periodoDate, setPeriodoDate] = useState<Date | undefined>();
   const [valor, setValor] = useState<number | ''>('');
@@ -171,13 +129,9 @@ export default function IndicadorDetallePage() {
 
   useEffect(() => {
     if (!indicadorId) return;
-    Promise.all([
-      obtenerIndicador(indicadorId),
-      listarMediciones(indicadorId),
-    ]).then(([ind, meds]) => {
-      setIndicador(ind);
-      setMediciones(meds);
-    }).finally(() => setIsLoading(false));
+    Promise.all([obtenerIndicador(indicadorId), listarMediciones(indicadorId)])
+      .then(([ind, meds]) => { setIndicador(ind); setMediciones(meds); })
+      .finally(() => setIsLoading(false));
   }, [indicadorId]);
 
   const handleGuardarMedicion = async () => {
@@ -186,22 +140,14 @@ export default function IndicadorDetallePage() {
       return;
     }
     const mes = String(periodoDate.getMonth() + 1).padStart(2, '0');
-    const anio = periodoDate.getFullYear();
-    const periodo = `${anio}-${mes}`;
-
+    const periodo = `${periodoDate.getFullYear()}-${mes}`;
     setIsSaving(true);
     try {
       const semaforo = calcularSemaforo(Number(valor), indicador);
       await registrarMedicion({
-        indicadorId,
-        periodo,
-        valor: Number(valor),
-        variables: {},
-        semaforo,
-        observacion,
-        responsableId: user?.uid ?? '',
-        responsableNombre: user?.displayName ?? '',
-        responsableCargo: '',
+        indicadorId, periodo, valor: Number(valor), variables: {}, semaforo,
+        observacion, responsableId: user?.uid ?? '',
+        responsableNombre: user?.displayName ?? '', responsableCargo: '',
       });
       toast({ title: 'Medición registrada correctamente.' });
       setIsAddingMedicion(false);
@@ -240,11 +186,7 @@ export default function IndicadorDetallePage() {
   const datosGrafica = [...mediciones]
     .filter(m => m.periodo?.match(/^\d{4}-\d{2}$/))
     .sort((a, b) => a.periodo.localeCompare(b.periodo))
-    .map(m => ({
-      periodo: periodoLabel(m.periodo),
-      valor: m.valor,
-      semaforo: m.semaforo,
-    }));
+    .map(m => ({ periodo: periodoLabel(m.periodo), valor: m.valor, semaforo: m.semaforo }));
 
   return (
     <div className="flex flex-col gap-6">
@@ -277,31 +219,18 @@ export default function IndicadorDetallePage() {
                   <span className="w-3 h-1 bg-orange-400 inline-block rounded" />
                   Meta: {indicador.meta}{indicador.unidadMedida}
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-sm bg-green-500 inline-block" /> Verde
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-sm bg-yellow-400 inline-block" /> Amarillo
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-sm bg-red-500 inline-block" /> Rojo
-                </span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-green-500 inline-block" /> Verde</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-yellow-400 inline-block" /> Amarillo</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block" /> Rojo</span>
               </div>
               <ResponsiveContainer width="100%" height={320}>
                 <BarChart data={datosGrafica} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="periodo" tick={{ fontSize: 12 }} />
                   <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip
-                    formatter={(value) => [`${value}${indicador.unidadMedida}`, 'Valor']}
-                  />
-                  <ReferenceLine
-                    y={indicador.meta}
-                    stroke="#f97316"
-                    strokeDasharray="6 3"
-                    strokeWidth={2}
-                    label={{ value: `Meta ${indicador.meta}${indicador.unidadMedida}`, position: 'insideTopRight', fontSize: 11, fill: '#f97316' }}
-                  />
+                  <Tooltip formatter={(value) => [`${value}${indicador.unidadMedida}`, 'Valor']} />
+                  <ReferenceLine y={indicador.meta} stroke="#f97316" strokeDasharray="6 3" strokeWidth={2}
+                    label={{ value: `Meta ${indicador.meta}${indicador.unidadMedida}`, position: 'insideTopRight', fontSize: 11, fill: '#f97316' }} />
                   <Bar dataKey="valor" radius={[4, 4, 0, 0]}>
                     {datosGrafica.map((entry, index) => (
                       <Cell key={index} fill={SEMAFORO_HEX[entry.semaforo]} />
@@ -314,30 +243,53 @@ export default function IndicadorDetallePage() {
         </TabsContent>
 
         <TabsContent value="ficha" className="mt-4">
-          <div className="rounded-md border overflow-hidden">
-            <table className="w-full text-sm">
-              <tbody>
-                {[
-                  ['Código', indicador.codigo],
-                  ['Nombre', indicador.nombre],
-                  ['Clase', indicador.clase],
-                  ['Tipo', indicador.tipo],
-                  ['Unidad de medida', indicador.unidadMedida],
-                  ['Frecuencia', indicador.frecuencia],
-                  ['Finalidad', indicador.finalidad],
-                  ['Meta', `${indicador.meta}${indicador.unidadMedida}`],
-                  ['Verde máximo', indicador.verdeMax !== undefined ? `${indicador.verdeMax}${indicador.unidadMedida}` : '—'],
-                  ['Amarillo máximo', indicador.amarilloMax !== undefined ? `${indicador.amarilloMax}${indicador.unidadMedida}` : '—'],
-                  ['Descripción', indicador.descripcion],
-                ].map(([label, value]) => (
-                  <tr key={label as string} className="border-b last:border-0">
-                    <td className="px-4 py-3 font-medium bg-muted/50 w-1/3">{label}</td>
-                    <td className="px-4 py-3 capitalize">{String(value ?? '—')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {isEditing ? (
+            <FormIndicador
+              procesoId={indicador.procesoId}
+              subprocesoId={indicador.subprocesoId}
+              indicadorExistente={indicador}
+              onSuccess={() => {
+                setIsEditing(false);
+                obtenerIndicador(indicadorId).then(setIndicador);
+              }}
+              onCancel={() => setIsEditing(false)}
+            />
+          ) : (
+            <div className="flex flex-col gap-4">
+              {userRole === 'superadmin' && (
+                <div className="flex justify-end">
+                  <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Editar indicador
+                  </Button>
+                </div>
+              )}
+              <div className="rounded-md border overflow-hidden">
+                <table className="w-full text-sm">
+                  <tbody>
+                    {[
+                      ['Código', indicador.codigo],
+                      ['Nombre', indicador.nombre],
+                      ['Clase', indicador.clase],
+                      ['Tipo', indicador.tipo],
+                      ['Unidad de medida', indicador.unidadMedida],
+                      ['Frecuencia', indicador.frecuencia],
+                      ['Finalidad', indicador.finalidad],
+                      ['Meta', `${indicador.meta}${indicador.unidadMedida}`],
+                      ['Verde máximo', indicador.verdeMax !== undefined ? `${indicador.verdeMax}${indicador.unidadMedida}` : '—'],
+                      ['Amarillo máximo', indicador.amarilloMax !== undefined ? `${indicador.amarilloMax}${indicador.unidadMedida}` : '—'],
+                      ['Descripción', indicador.descripcion],
+                    ].map(([label, value]) => (
+                      <tr key={label as string} className="border-b last:border-0">
+                        <td className="px-4 py-3 font-medium bg-muted/50 w-1/3">{label}</td>
+                        <td className="px-4 py-3 capitalize">{String(value ?? '—')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="analisis" className="mt-4">
@@ -349,21 +301,21 @@ export default function IndicadorDetallePage() {
               .filter(m => m.periodo?.match(/^\d{4}-\d{2}$/))
               .sort((a, b) => b.periodo.localeCompare(a.periodo))
               .map((m) => (
-              <div key={m.id} className="border rounded-lg p-4 flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className={`w-3 h-3 rounded-full ${SEMAFORO_COLORS[m.semaforo]}`} />
-                    <span className="font-semibold">{periodoLabelFull(m.periodo)}</span>
-                    <span className="text-lg font-bold">{m.valor}{indicador.unidadMedida}</span>
-                    <span className="text-sm text-muted-foreground">(Meta {indicador.meta}{indicador.unidadMedida})</span>
+                <div key={m.id} className="border rounded-lg p-4 flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className={`w-3 h-3 rounded-full ${SEMAFORO_COLORS[m.semaforo]}`} />
+                      <span className="font-semibold">{periodoLabelFull(m.periodo)}</span>
+                      <span className="text-lg font-bold">{m.valor}{indicador.unidadMedida}</span>
+                      <span className="text-sm text-muted-foreground">(Meta {indicador.meta}{indicador.unidadMedida})</span>
+                    </div>
+                    <span className="text-sm text-muted-foreground">{m.responsableNombre}</span>
                   </div>
-                  <span className="text-sm text-muted-foreground">{m.responsableNombre}</span>
+                  {m.observacion && (
+                    <p className="text-sm text-muted-foreground italic">"{m.observacion}"</p>
+                  )}
                 </div>
-                {m.observacion && (
-                  <p className="text-sm text-muted-foreground italic">"{m.observacion}"</p>
-                )}
-              </div>
-            ))}
+              ))}
           </div>
         </TabsContent>
 
@@ -389,29 +341,17 @@ export default function IndicadorDetallePage() {
                   </div>
                   <div className="space-y-1">
                     <Label htmlFor="valor">Valor ({indicador.unidadMedida})</Label>
-                    <Input
-                      id="valor"
-                      type="number"
-                      placeholder="Valor numérico"
-                      value={valor}
-                      onChange={(e) => setValor(e.target.value === '' ? '' : Number(e.target.value))}
-                    />
+                    <Input id="valor" type="number" placeholder="Valor numérico" value={valor}
+                      onChange={(e) => setValor(e.target.value === '' ? '' : Number(e.target.value))} />
                   </div>
                   <div className="space-y-1 col-span-2">
                     <Label htmlFor="observacion">Observación / Análisis</Label>
-                    <Textarea
-                      id="observacion"
-                      placeholder="Describa el comportamiento del indicador en este período..."
-                      rows={3}
-                      value={observacion}
-                      onChange={(e) => setObservacion(e.target.value)}
-                    />
+                    <Textarea id="observacion" placeholder="Describa el comportamiento del indicador en este período..."
+                      rows={3} value={observacion} onChange={(e) => setObservacion(e.target.value)} />
                   </div>
                 </div>
                 <div className="flex justify-end gap-2">
-                  <Button variant="ghost" onClick={() => setIsAddingMedicion(false)} disabled={isSaving}>
-                    Cancelar
-                  </Button>
+                  <Button variant="ghost" onClick={() => setIsAddingMedicion(false)} disabled={isSaving}>Cancelar</Button>
                   <Button onClick={handleGuardarMedicion} disabled={isSaving}>
                     {isSaving ? 'Guardando...' : 'Guardar medición'}
                   </Button>
@@ -439,18 +379,18 @@ export default function IndicadorDetallePage() {
                       .filter(m => m.periodo?.match(/^\d{4}-\d{2}$/))
                       .sort((a, b) => b.periodo.localeCompare(a.periodo))
                       .map((m) => (
-                      <tr key={m.id} className="border-b last:border-0">
-                        <td className="px-4 py-3 capitalize">{periodoLabelFull(m.periodo)}</td>
-                        <td className="px-4 py-3 font-bold">{m.valor}{indicador.unidadMedida}</td>
-                        <td className="px-4 py-3">
-                          <span className="inline-flex items-center gap-1.5 text-xs font-medium">
-                            <span className={`w-2.5 h-2.5 rounded-full ${SEMAFORO_COLORS[m.semaforo]}`} />
-                            {SEMAFORO_LABELS[m.semaforo]}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground">{m.responsableNombre}</td>
-                      </tr>
-                    ))}
+                        <tr key={m.id} className="border-b last:border-0">
+                          <td className="px-4 py-3 capitalize">{periodoLabelFull(m.periodo)}</td>
+                          <td className="px-4 py-3 font-bold">{m.valor}{indicador.unidadMedida}</td>
+                          <td className="px-4 py-3">
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium">
+                              <span className={`w-2.5 h-2.5 rounded-full ${SEMAFORO_COLORS[m.semaforo]}`} />
+                              {SEMAFORO_LABELS[m.semaforo]}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground">{m.responsableNombre}</td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>
