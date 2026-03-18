@@ -243,54 +243,131 @@ export default function IndicadorDetallePage() {
         </TabsContent>
 
         <TabsContent value="ficha" className="mt-4">
-          {isEditing ? (
-            <FormIndicador
-              procesoId={indicador.procesoId}
-              subprocesoId={indicador.subprocesoId}
-              indicadorExistente={indicador}
-              onSuccess={() => {
-                setIsEditing(false);
-                obtenerIndicador(indicadorId).then(setIndicador);
-              }}
-              onCancel={() => setIsEditing(false)}
-            />
-          ) : (
-            <div className="flex flex-col gap-4">
-              {userRole === 'superadmin' && (
-                <div className="flex justify-end">
-                  <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Editar indicador
-                  </Button>
-                </div>
-              )}
-              <div className="rounded-md border overflow-hidden">
-                <table className="w-full text-sm">
-                  <tbody>
-                    {[
-                      ['Código', indicador.codigo],
-                      ['Nombre', indicador.nombre],
-                      ['Clase', indicador.clase],
-                      ['Tipo', indicador.tipo],
-                      ['Unidad de medida', indicador.unidadMedida],
-                      ['Frecuencia', indicador.frecuencia],
-                      ['Finalidad', indicador.finalidad],
-                      ['Meta', `${indicador.meta}${indicador.unidadMedida}`],
-                      ['Verde máximo', indicador.verdeMax !== undefined ? `${indicador.verdeMax}${indicador.unidadMedida}` : '—'],
-                      ['Amarillo máximo', indicador.amarilloMax !== undefined ? `${indicador.amarilloMax}${indicador.unidadMedida}` : '—'],
-                      ['Descripción', indicador.descripcion],
-                    ].map(([label, value]) => (
-                      <tr key={label as string} className="border-b last:border-0">
-                        <td className="px-4 py-3 font-medium bg-muted/50 w-1/3">{label}</td>
-                        <td className="px-4 py-3 capitalize">{String(value ?? '—')}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </TabsContent>
+  {isEditing ? (
+    <FormIndicador
+      procesoId={indicador.procesoId}
+      subprocesoId={indicador.subprocesoId}
+      indicadorExistente={indicador}
+      onSuccess={() => {
+        setIsEditing(false);
+        obtenerIndicador(indicadorId).then(setIndicador);
+      }}
+      onCancel={() => setIsEditing(false)}
+    />
+  ) : (
+    <div className="flex flex-col gap-6">
+      {/* Botón editar */}
+      {userRole === 'superadmin' && (
+        <div className="flex justify-end">
+          <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+            <Pencil className="mr-2 h-4 w-4" />
+            Editar indicador
+          </Button>
+        </div>
+      )}
+
+      {/* Resumen semáforo */}
+      <div className="flex flex-col items-center gap-3 p-4 border rounded-lg bg-muted/30">
+        <div className="flex items-center gap-6 text-sm flex-wrap justify-center">
+          <span><strong>Meta:</strong> {indicador.meta}{indicador.unidadMedida}</span>
+          <span><strong>Finalidad:</strong> {indicador.finalidad === 'maximizar' ? 'Maximizar' : 'Minimizar'}</span>
+          <span><strong>Frecuencia:</strong> <span className="capitalize">{indicador.frecuencia}</span></span>
+        </div>
+        {indicador.verdeMax !== undefined && indicador.amarilloMax !== undefined && (
+          <div className="flex items-center gap-2 flex-wrap justify-center">
+            {indicador.finalidad === 'maximizar' ? (
+              <>
+                <span className="px-3 py-1.5 rounded font-bold text-white text-sm bg-red-500">
+                  &lt; {indicador.amarilloMax}{indicador.unidadMedida}
+                </span>
+                <span className="px-3 py-1.5 rounded font-bold text-white text-sm bg-yellow-400">
+                  &gt;= {indicador.amarilloMax}{indicador.unidadMedida} &lt; {indicador.verdeMax}{indicador.unidadMedida}
+                </span>
+                <span className="px-3 py-1.5 rounded font-bold text-white text-sm bg-green-500">
+                  &gt;= {indicador.verdeMax}{indicador.unidadMedida}
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="px-3 py-1.5 rounded font-bold text-white text-sm bg-green-500">
+                  &lt;= {indicador.verdeMax}{indicador.unidadMedida}
+                </span>
+                <span className="px-3 py-1.5 rounded font-bold text-white text-sm bg-yellow-400">
+                  &gt; {indicador.verdeMax}{indicador.unidadMedida} &lt;= {indicador.amarilloMax}{indicador.unidadMedida}
+                </span>
+                <span className="px-3 py-1.5 rounded font-bold text-white text-sm bg-red-500">
+                  &gt; {indicador.amarilloMax}{indicador.unidadMedida}
+                </span>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Información General */}
+      <div className="rounded-md border overflow-hidden">
+        <div className="px-4 py-2 bg-muted font-semibold text-sm">INFORMACIÓN GENERAL</div>
+        <table className="w-full text-sm">
+          <tbody>
+            <tr className="border-t">
+              <td colSpan={2} className="px-4 py-2 font-medium bg-muted/30 text-center text-xs uppercase tracking-wide">Definición</td>
+            </tr>
+            {[
+              ['Clase', indicador.clase],
+              ['Tipo', indicador.tipo],
+              ['Descripción', indicador.descripcion || '—'],
+            ].map(([label, value]) => (
+              <tr key={label as string} className="border-t">
+                <td className="px-4 py-3 font-medium bg-muted/20 w-1/3">{label}</td>
+                <td className="px-4 py-3">{String(value ?? '—')}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Asociado a */}
+      <div className="rounded-md border overflow-hidden">
+        <div className="px-4 py-2 bg-muted font-semibold text-sm">ASOCIADO A</div>
+        <table className="w-full text-sm">
+          <tbody>
+            <tr className="border-t">
+              <td className="px-4 py-3 font-medium bg-muted/20 w-1/3">Proceso / Área</td>
+              <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{indicador.procesoId}</td>
+            </tr>
+            {indicador.subprocesoId && (
+              <tr className="border-t">
+                <td className="px-4 py-3 font-medium bg-muted/20 w-1/3">Subproceso</td>
+                <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{indicador.subprocesoId}</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Medición */}
+      <div className="rounded-md border overflow-hidden">
+        <div className="px-4 py-2 bg-muted font-semibold text-sm">MEDICIÓN</div>
+        <table className="w-full text-sm">
+          <tbody>
+            <tr className="border-t">
+              <td className="px-4 py-3 font-medium bg-muted/20 w-1/3">Unidad de medida</td>
+              <td className="px-4 py-3">{indicador.unidadMedida}</td>
+              <td className="px-4 py-3 font-medium bg-muted/20 w-1/3">Frecuencia</td>
+              <td className="px-4 py-3 capitalize">{indicador.frecuencia}</td>
+            </tr>
+            <tr className="border-t">
+              <td className="px-4 py-3 font-medium bg-muted/20">Meta</td>
+              <td className="px-4 py-3">{indicador.meta}{indicador.unidadMedida}</td>
+              <td className="px-4 py-3 font-medium bg-muted/20">Día de corte</td>
+              <td className="px-4 py-3">{indicador.diaCorte || '—'}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )}
+</TabsContent>
 
         <TabsContent value="analisis" className="mt-4">
           <div className="flex flex-col gap-4">
