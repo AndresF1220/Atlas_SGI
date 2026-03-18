@@ -243,131 +243,164 @@ export default function IndicadorDetallePage() {
         </TabsContent>
 
         <TabsContent value="ficha" className="mt-4">
-  {isEditing ? (
-    <FormIndicador
-      procesoId={indicador.procesoId}
-      subprocesoId={indicador.subprocesoId}
-      indicadorExistente={indicador}
-      onSuccess={() => {
-        setIsEditing(false);
-        obtenerIndicador(indicadorId).then(setIndicador);
-      }}
-      onCancel={() => setIsEditing(false)}
-    />
-  ) : (
-    <div className="flex flex-col gap-6">
-      {/* Botón editar */}
-      {userRole === 'superadmin' && (
-        <div className="flex justify-end">
-          <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-            <Pencil className="mr-2 h-4 w-4" />
-            Editar indicador
-          </Button>
-        </div>
-      )}
+          {isEditing ? (
+            <FormIndicador
+              procesoId={indicador.procesoId}
+              subprocesoId={indicador.subprocesoId}
+              indicadorExistente={indicador}
+              onSuccess={() => {
+                setIsEditing(false);
+                obtenerIndicador(indicadorId).then(setIndicador);
+              }}
+              onCancel={() => setIsEditing(false)}
+            />
+          ) : (
+            <div className="flex flex-col gap-2 text-xs">
+              {userRole === 'superadmin' && (
+                <div className="flex justify-end mb-1">
+                  <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                    <Pencil className="mr-1.5 h-3 w-3" />
+                    Editar
+                  </Button>
+                </div>
+              )}
 
-      {/* Resumen semáforo */}
-      <div className="flex flex-col items-center gap-3 p-4 border rounded-lg bg-muted/30">
-        <div className="flex items-center gap-6 text-sm flex-wrap justify-center">
-          <span><strong>Meta:</strong> {indicador.meta}{indicador.unidadMedida}</span>
-          <span><strong>Finalidad:</strong> {indicador.finalidad === 'maximizar' ? 'Maximizar' : 'Minimizar'}</span>
-          <span><strong>Frecuencia:</strong> <span className="capitalize">{indicador.frecuencia}</span></span>
-        </div>
-        {indicador.verdeMax !== undefined && indicador.amarilloMax !== undefined && (
-          <div className="flex items-center gap-2 flex-wrap justify-center">
-            {indicador.finalidad === 'maximizar' ? (
-              <>
-                <span className="px-3 py-1.5 rounded font-bold text-white text-sm bg-red-500">
-                  &lt; {indicador.amarilloMax}{indicador.unidadMedida}
-                </span>
-                <span className="px-3 py-1.5 rounded font-bold text-white text-sm bg-yellow-400">
-                  &gt;= {indicador.amarilloMax}{indicador.unidadMedida} &lt; {indicador.verdeMax}{indicador.unidadMedida}
-                </span>
-                <span className="px-3 py-1.5 rounded font-bold text-white text-sm bg-green-500">
-                  &gt;= {indicador.verdeMax}{indicador.unidadMedida}
-                </span>
-              </>
-            ) : (
-              <>
-                <span className="px-3 py-1.5 rounded font-bold text-white text-sm bg-green-500">
-                  &lt;= {indicador.verdeMax}{indicador.unidadMedida}
-                </span>
-                <span className="px-3 py-1.5 rounded font-bold text-white text-sm bg-yellow-400">
-                  &gt; {indicador.verdeMax}{indicador.unidadMedida} &lt;= {indicador.amarilloMax}{indicador.unidadMedida}
-                </span>
-                <span className="px-3 py-1.5 rounded font-bold text-white text-sm bg-red-500">
-                  &gt; {indicador.amarilloMax}{indicador.unidadMedida}
-                </span>
-              </>
-            )}
-          </div>
-        )}
-      </div>
+              {/* Resumen semáforo */}
+              <div className="border rounded flex flex-col items-center gap-1.5 py-2 px-4 bg-muted/20">
+                <div className="flex items-center gap-5 flex-wrap justify-center">
+                  <span><strong>Meta:</strong> {indicador.meta}{indicador.unidadMedida}</span>
+                  <span><strong>Semáforo:</strong> Lineal</span>
+                  <span><strong>Finalidad:</strong> {indicador.finalidad === 'maximizar' ? 'Maximizar' : 'Minimizar'}</span>
+                </div>
+                {indicador.verdeMax !== undefined && indicador.amarilloMax !== undefined && (
+                  <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                    {indicador.finalidad === 'maximizar' ? (
+                      <>
+                        <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-green-500">&gt;= {indicador.verdeMax}{indicador.unidadMedida}</span>
+                        <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-yellow-400">&gt;= {indicador.amarilloMax}{indicador.unidadMedida} &lt; {indicador.verdeMax}{indicador.unidadMedida}</span>
+                        <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-red-500">&lt; {indicador.amarilloMax}{indicador.unidadMedida}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-green-500">&lt;= {indicador.verdeMax}{indicador.unidadMedida}</span>
+                        <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-yellow-400">&gt; {indicador.verdeMax}{indicador.unidadMedida} &lt;= {indicador.amarilloMax}{indicador.unidadMedida}</span>
+                        <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-red-500">&gt; {indicador.amarilloMax}{indicador.unidadMedida}</span>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
 
-      {/* Información General */}
-      <div className="rounded-md border overflow-hidden">
-        <div className="px-4 py-2 bg-muted font-semibold text-sm">INFORMACIÓN GENERAL</div>
-        <table className="w-full text-sm">
-          <tbody>
-            <tr className="border-t">
-              <td colSpan={2} className="px-4 py-2 font-medium bg-muted/30 text-center text-xs uppercase tracking-wide">Definición</td>
-            </tr>
-            {[
-              ['Clase', indicador.clase],
-              ['Tipo', indicador.tipo],
-              ['Descripción', indicador.descripcion || '—'],
-            ].map(([label, value]) => (
-              <tr key={label as string} className="border-t">
-                <td className="px-4 py-3 font-medium bg-muted/20 w-1/3">{label}</td>
-                <td className="px-4 py-3">{String(value ?? '—')}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+              {/* Información General */}
+              <div className="border rounded overflow-hidden">
+                <div className="px-3 py-1 bg-muted font-semibold text-xs uppercase tracking-wide border-b text-center">Información General</div>
+                <div className="px-3 py-0.5 bg-muted/30 text-xs font-medium border-b text-center">Definición</div>
+                <table className="w-full text-xs border-collapse">
+                  <tbody>
+                    <tr className="border-b">
+                      <td className="px-3 py-1.5 font-semibold bg-muted/20 w-1/4 border-r">Clase</td>
+                      <td className="px-3 py-1.5 w-1/4 border-r">{indicador.clase}</td>
+                      <td className="px-3 py-1.5 font-semibold bg-muted/20 w-1/4 border-r">Tipo</td>
+                      <td className="px-3 py-1.5 capitalize">{indicador.tipo}</td>
+                    </tr>
+                    <tr className="border-b">
+                      <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r">Código</td>
+                      <td className="px-3 py-1.5 border-r">{indicador.codigo}</td>
+                      <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r">Nombre</td>
+                      <td className="px-3 py-1.5">{indicador.nombre}</td>
+                    </tr>
+                    {indicador.descripcion && (
+                      <tr className="border-b">
+                        <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r">Descripción</td>
+                        <td className="px-3 py-1.5" colSpan={3}>{indicador.descripcion}</td>
+                      </tr>
+                    )}
+                    <tr>
+                      <td colSpan={4} className="px-3 py-0.5 bg-muted/30 font-medium text-center border-y">Información adicional</td>
+                    </tr>
+                    <tr className="border-b">
+                      <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r">Fuente de información</td>
+                      <td className="px-3 py-1.5" colSpan={3}>{indicador.fuenteInformacion || '—'}</td>
+                    </tr>
+                    {indicador.controlCambios && indicador.controlCambios.length > 0 && (
+                      <tr>
+                        <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r align-top">Control de cambios</td>
+                        <td className="px-3 py-1.5" colSpan={3}>
+                          <ul className="space-y-0.5">
+                            {indicador.controlCambios.map((c, i) => (
+                              <li key={i}>— {c.fecha} — {c.descripcion}</li>
+                            ))}
+                          </ul>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
 
-      {/* Asociado a */}
-      <div className="rounded-md border overflow-hidden">
-        <div className="px-4 py-2 bg-muted font-semibold text-sm">ASOCIADO A</div>
-        <table className="w-full text-sm">
-          <tbody>
-            <tr className="border-t">
-              <td className="px-4 py-3 font-medium bg-muted/20 w-1/3">Proceso / Área</td>
-              <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{indicador.procesoId}</td>
-            </tr>
-            {indicador.subprocesoId && (
-              <tr className="border-t">
-                <td className="px-4 py-3 font-medium bg-muted/20 w-1/3">Subproceso</td>
-                <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{indicador.subprocesoId}</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+              {/* Asociado a */}
+              <div className="border rounded overflow-hidden">
+                <div className="px-3 py-1 bg-muted font-semibold text-xs uppercase tracking-wide border-b text-center">Asociado a</div>
+                <table className="w-full text-xs border-collapse">
+                  <tbody>
+                    <tr>
+                      <td className="px-3 py-1.5 font-semibold bg-muted/20 w-1/4 border-r">Proceso / Área</td>
+                      <td className="px-3 py-1.5 text-muted-foreground font-mono border-r">{indicador.procesoId}</td>
+                      {indicador.subprocesoId ? (
+                        <>
+                          <td className="px-3 py-1.5 font-semibold bg-muted/20 w-1/4 border-r">Subproceso</td>
+                          <td className="px-3 py-1.5 text-muted-foreground font-mono">{indicador.subprocesoId}</td>
+                        </>
+                      ) : <td colSpan={2} />}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
 
-      {/* Medición */}
-      <div className="rounded-md border overflow-hidden">
-        <div className="px-4 py-2 bg-muted font-semibold text-sm">MEDICIÓN</div>
-        <table className="w-full text-sm">
-          <tbody>
-            <tr className="border-t">
-              <td className="px-4 py-3 font-medium bg-muted/20 w-1/3">Unidad de medida</td>
-              <td className="px-4 py-3">{indicador.unidadMedida}</td>
-              <td className="px-4 py-3 font-medium bg-muted/20 w-1/3">Frecuencia</td>
-              <td className="px-4 py-3 capitalize">{indicador.frecuencia}</td>
-            </tr>
-            <tr className="border-t">
-              <td className="px-4 py-3 font-medium bg-muted/20">Meta</td>
-              <td className="px-4 py-3">{indicador.meta}{indicador.unidadMedida}</td>
-              <td className="px-4 py-3 font-medium bg-muted/20">Día de corte</td>
-              <td className="px-4 py-3">{indicador.diaCorte || '—'}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )}
-</TabsContent>
+              {/* Medición */}
+              <div className="border rounded overflow-hidden">
+                <div className="px-3 py-1 bg-muted font-semibold text-xs uppercase tracking-wide border-b text-center">Medición</div>
+                <table className="w-full text-xs border-collapse">
+                  <tbody>
+                    <tr className="border-b">
+                      <td className="px-3 py-1.5 font-semibold bg-muted/20 w-1/4 border-r">Unidad de medida</td>
+                      <td className="px-3 py-1.5 border-r">{indicador.unidadMedida}</td>
+                      <td className="px-3 py-1.5 font-semibold bg-muted/20 w-1/4 border-r">Frecuencia</td>
+                      <td className="px-3 py-1.5 capitalize">{indicador.frecuencia}</td>
+                    </tr>
+                    <tr className="border-b">
+                      <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r">Meta</td>
+                      <td className="px-3 py-1.5 border-r">{indicador.meta}{indicador.unidadMedida}</td>
+                      <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r">Día de corte</td>
+                      <td className="px-3 py-1.5">{indicador.diaCorte || '—'}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r">Finalidad</td>
+                      <td className="px-3 py-1.5 capitalize border-r">{indicador.finalidad}</td>
+                      <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r">Activo</td>
+                      <td className="px-3 py-1.5">{indicador.activo ? 'Sí' : 'No'}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Composición */}
+              {indicador.formula && (
+                <div className="border rounded overflow-hidden">
+                  <div className="px-3 py-1 bg-muted font-semibold text-xs uppercase tracking-wide border-b text-center">Composición</div>
+                  <table className="w-full text-xs border-collapse">
+                    <tbody>
+                      <tr>
+                        <td className="px-3 py-1.5 font-semibold bg-muted/20 w-1/4 border-r">Fórmula</td>
+                        <td className="px-3 py-1.5 font-mono">{indicador.formula}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </TabsContent>
 
         <TabsContent value="analisis" className="mt-4">
           <div className="flex flex-col gap-4">

@@ -14,13 +14,12 @@ export interface Indicador {
   formula: string
   descripcion: string
   interpretacion: string
-  fuenteNumerador: string
-  fuenteDenominador: string
+  fuenteInformacion?: string
   procesoId: string
   subprocesoId?: string
   categorias: string[]
   atributosCalidad: string[]
-  controlCambios: string
+  controlCambios?: { fecha: string; descripcion: string }[]
   activo: boolean
   permitirPeriodosSinMedicion: boolean
   creadoEn?: any
