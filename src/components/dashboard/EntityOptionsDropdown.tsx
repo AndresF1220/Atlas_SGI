@@ -31,7 +31,7 @@ interface EntityOptionsDropdownProps {
   entityId: string;
   entityName: string;
   entityType: 'area' | 'process' | 'subprocess';
-  parentId: string;
+  parentId?: string;
   grandParentId?: string;
   redirectOnDelete?: string;
 }

@@ -23,7 +23,7 @@ interface RenameEntityFormProps {
   entityId: string;
   entityType: 'area' | 'process' | 'subprocess';
   currentName: string;
-  parentId: string;
+  parentId?: string;
   grandParentId?: string;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -94,8 +94,7 @@ export function RenameEntityForm({
                 
                 <input type="hidden" name="entityId" value={entityId} />
                 <input type="hidden" name="entityType" value={entityType} />
-                <input type="hidden" name="parentId" value={parentId} />
-                {grandParentId && <input type="hidden" name="grandParentId" value={grandParentId} />}
+                {parentId && <input type="hidden" name="parentId" value={parentId} />}                {grandParentId && <input type="hidden" name="grandParentId" value={grandParentId} />}
             </div>
             <DialogFooter>
                 <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>

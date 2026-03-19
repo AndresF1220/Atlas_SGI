@@ -22,6 +22,8 @@ import {
   ReferenceLine, ResponsiveContainer, Cell,
 } from 'recharts';
 import FormIndicador from '@/components/indicadores/FormIndicador';
+import { doc } from 'firebase/firestore';
+import { useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 
 const MESES = [
   { value: 0, label: 'Enero' }, { value: 1, label: 'Febrero' },
@@ -115,6 +117,7 @@ export default function IndicadorDetallePage() {
   const { toast } = useToast();
   const { user, userRole } = useAuth();
   const indicadorId = params.indicadorId as string;
+  const firestore = useFirestore();
 
   const [indicador, setIndicador] = useState<Indicador | null>(null);
   const [mediciones, setMediciones] = useState<Medicion[]>([]);
@@ -122,10 +125,19 @@ export default function IndicadorDetallePage() {
   const [isAddingMedicion, setIsAddingMedicion] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [tabActiva, setTabActiva] = useState('seguimiento');
 
   const [periodoDate, setPeriodoDate] = useState<Date | undefined>();
   const [valor, setValor] = useState<number | ''>('');
   const [observacion, setObservacion] = useState('');
+
+  const companyRef = useMemoFirebase(
+    () => (firestore ? doc(firestore, 'settings', 'company') : null),
+    [firestore]
+  );
+  const { data: company } = useDoc(companyRef);
+  const companyName = (company as any)?.name || 'Dusakawi EPSI';
+  const logoUrl = (company as any)?.logoUrl;
 
   useEffect(() => {
     if (!indicadorId) return;
@@ -166,7 +178,7 @@ export default function IndicadorDetallePage() {
   if (isLoading) {
     return (
       <div className="flex flex-col gap-4">
-        <Skeleton className="h-10 w-1/3" />
+        <Skeleton className="h-32 w-full" />
         <Skeleton className="h-8 w-full" />
         <Skeleton className="h-64 w-full" />
       </div>
@@ -188,326 +200,361 @@ export default function IndicadorDetallePage() {
     .sort((a, b) => a.periodo.localeCompare(b.periodo))
     .map(m => ({ periodo: periodoLabel(m.periodo), valor: m.valor, semaforo: m.semaforo }));
 
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
+    return (
+      <div className="flex flex-col gap-4">
+  
+        {/* Botón Volver — siempre visible arriba */}
+        <div className="flex flex-col gap-1 -mb-3">
+        <Button variant="ghost" size="sm" className="w-fit h-8 px-2" onClick={() => router.back()}>
+          <ArrowLeft className="mr-1 h-3.5 w-3.5" />
           Volver
         </Button>
-        <div>
-          <p className="text-sm text-muted-foreground font-mono">{indicador.codigo}</p>
-          <h1 className="text-2xl font-bold font-headline">{indicador.nombre}</h1>
-        </div>
+        <h1 className="text-lg font-bold font-headline px-2">{indicador.nombre}</h1>
       </div>
-
-      <Tabs defaultValue="seguimiento">
-        <TabsList>
-          <TabsTrigger value="seguimiento">Seguimiento</TabsTrigger>
-          <TabsTrigger value="ficha">Ficha técnica</TabsTrigger>
-          <TabsTrigger value="analisis">Análisis</TabsTrigger>
-          <TabsTrigger value="mediciones">Mediciones</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="seguimiento" className="mt-4">
-          {datosGrafica.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No hay mediciones para mostrar la gráfica.</p>
-          ) : (
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <span className="w-3 h-1 bg-orange-400 inline-block rounded" />
-                  Meta: {indicador.meta}{indicador.unidadMedida}
-                </span>
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-green-500 inline-block" /> Verde</span>
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-yellow-400 inline-block" /> Amarillo</span>
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block" /> Rojo</span>
+  
+        <Tabs value={tabActiva} onValueChange={setTabActiva}>
+        <TabsList className="mt-1">
+            <TabsTrigger value="seguimiento">Seguimiento</TabsTrigger>
+            <TabsTrigger value="ficha">Ficha técnica</TabsTrigger>
+            <TabsTrigger value="analisis">Análisis</TabsTrigger>
+            <TabsTrigger value="mediciones">Mediciones</TabsTrigger>
+          </TabsList>
+  
+          <TabsContent value="seguimiento" className="mt-4">
+            {datosGrafica.length === 0 ? (
+              <p className="text-muted-foreground text-sm">No hay mediciones para mostrar la gráfica.</p>
+            ) : (
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-1 bg-orange-400 inline-block rounded" />
+                    Meta: {indicador.meta}{indicador.unidadMedida}
+                  </span>
+                  <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-green-500 inline-block" /> Verde</span>
+                  <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-yellow-400 inline-block" /> Amarillo</span>
+                  <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block" /> Rojo</span>
+                </div>
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart data={datosGrafica} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="periodo" tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip formatter={(value) => [`${value}${indicador.unidadMedida}`, 'Valor']} />
+                    <ReferenceLine y={indicador.meta} stroke="#f97316" strokeDasharray="6 3" strokeWidth={2}
+                      label={{ value: `Meta ${indicador.meta}${indicador.unidadMedida}`, position: 'insideTopRight', fontSize: 11, fill: '#f97316' }} />
+                    <Bar dataKey="valor" radius={[4, 4, 0, 0]}>
+                      {datosGrafica.map((entry, index) => (
+                        <Cell key={index} fill={SEMAFORO_HEX[entry.semaforo]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
-              <ResponsiveContainer width="100%" height={320}>
-                <BarChart data={datosGrafica} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="periodo" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip formatter={(value) => [`${value}${indicador.unidadMedida}`, 'Valor']} />
-                  <ReferenceLine y={indicador.meta} stroke="#f97316" strokeDasharray="6 3" strokeWidth={2}
-                    label={{ value: `Meta ${indicador.meta}${indicador.unidadMedida}`, position: 'insideTopRight', fontSize: 11, fill: '#f97316' }} />
-                  <Bar dataKey="valor" radius={[4, 4, 0, 0]}>
-                    {datosGrafica.map((entry, index) => (
-                      <Cell key={index} fill={SEMAFORO_HEX[entry.semaforo]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="ficha" className="mt-4">
-          {isEditing ? (
-            <FormIndicador
-              procesoId={indicador.procesoId}
-              subprocesoId={indicador.subprocesoId}
-              indicadorExistente={indicador}
-              onSuccess={() => {
-                setIsEditing(false);
-                obtenerIndicador(indicadorId).then(setIndicador);
-              }}
-              onCancel={() => setIsEditing(false)}
-            />
-          ) : (
-            <div className="flex flex-col gap-2 text-xs">
-              {userRole === 'superadmin' && (
-                <div className="flex justify-end mb-1">
-                  <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                    <Pencil className="mr-1.5 h-3 w-3" />
-                    Editar
-                  </Button>
-                </div>
-              )}
-
-              {/* Resumen semáforo */}
-              <div className="border rounded flex flex-col items-center gap-1.5 py-2 px-4 bg-muted/20">
-                <div className="flex items-center gap-5 flex-wrap justify-center">
-                  <span><strong>Meta:</strong> {indicador.meta}{indicador.unidadMedida}</span>
-                  <span><strong>Semáforo:</strong> Lineal</span>
-                  <span><strong>Finalidad:</strong> {indicador.finalidad === 'maximizar' ? 'Maximizar' : 'Minimizar'}</span>
-                </div>
-                {indicador.verdeMax !== undefined && indicador.amarilloMax !== undefined && (
-                  <div className="flex items-center gap-1.5 flex-wrap justify-center">
-                    {indicador.finalidad === 'maximizar' ? (
-                      <>
-                        <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-green-500">&gt;= {indicador.verdeMax}{indicador.unidadMedida}</span>
-                        <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-yellow-400">&gt;= {indicador.amarilloMax}{indicador.unidadMedida} &lt; {indicador.verdeMax}{indicador.unidadMedida}</span>
-                        <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-red-500">&lt; {indicador.amarilloMax}{indicador.unidadMedida}</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-green-500">&lt;= {indicador.verdeMax}{indicador.unidadMedida}</span>
-                        <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-yellow-400">&gt; {indicador.verdeMax}{indicador.unidadMedida} &lt;= {indicador.amarilloMax}{indicador.unidadMedida}</span>
-                        <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-red-500">&gt; {indicador.amarilloMax}{indicador.unidadMedida}</span>
-                      </>
+            )}
+          </TabsContent>
+  
+          <TabsContent value="ficha" className="mt-4">
+            {isEditing ? (
+              <FormIndicador
+                procesoId={indicador.procesoId}
+                subprocesoId={indicador.subprocesoId}
+                indicadorExistente={indicador}
+                onSuccess={() => {
+                  setIsEditing(false);
+                  obtenerIndicador(indicadorId).then(setIndicador);
+                }}
+                onCancel={() => setIsEditing(false)}
+              />
+            ) : (
+              <div className="flex flex-col gap-2 text-xs">
+  
+                {/* Encabezado estilo CaracterizacionPanel — solo en ficha técnica */}
+                <div className="rounded-lg border bg-white shadow-sm mb-2">
+                  <div className="flex justify-end px-4 py-1 border-b">
+                    {userRole === 'superadmin' && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-gray-400 hover:text-gray-700"
+                        title="Editar indicador"
+                        onClick={() => setIsEditing(true)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                     )}
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-4">
+                    <div className="flex-shrink-0">
+                      {logoUrl ? (
+                        <img src={logoUrl} alt="Logo" className="h-16 w-16 object-contain rounded" />
+                      ) : (
+                        <div className="h-16 w-16 rounded bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-xl">
+                          DE
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 text-center px-4">
+                      <p className="font-bold text-lg text-gray-900">{companyName}</p>
+                      <p className="text-sm text-gray-700">
+                        <span className="font-semibold">
+                          {indicador.subprocesoId ? 'Subproceso' : 'Proceso / Área'}:
+                        </span>{' '}
+                        <span className="text-gray-900">{indicador.procesoId}</span>
+                      </p>
+                      <p className="text-sm text-gray-700">
+                        <span className="font-semibold">Indicador:</span>{' '}
+                        <span className="text-gray-900 font-medium">{indicador.nombre}</span>
+                      </p>
+                    </div>
+                    <div className="flex-shrink-0 text-right text-sm min-w-[130px]">
+                      <p><span className="font-semibold">Código:</span> {indicador.codigo}</p>
+                    </div>
+                  </div>
+                </div>
+  
+                {/* Resumen semáforo */}
+                <div className="border rounded flex flex-col items-center gap-1.5 py-2 px-4 bg-muted/20">
+                  <div className="flex items-center gap-5 flex-wrap justify-center">
+                    <span><strong>Meta:</strong> {indicador.meta}{indicador.unidadMedida}</span>
+                    <span><strong>Semáforo:</strong> Lineal</span>
+                    <span><strong>Finalidad:</strong> {indicador.finalidad === 'maximizar' ? 'Maximizar' : 'Minimizar'}</span>
+                  </div>
+                  {indicador.verdeMax !== undefined && indicador.amarilloMax !== undefined && (
+                    <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                      {indicador.finalidad === 'maximizar' ? (
+                        <>
+                          <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-green-500">&gt;= {indicador.verdeMax}{indicador.unidadMedida}</span>
+                          <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-yellow-400">&gt;= {indicador.amarilloMax}{indicador.unidadMedida} &lt; {indicador.verdeMax}{indicador.unidadMedida}</span>
+                          <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-red-500">&lt; {indicador.amarilloMax}{indicador.unidadMedida}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-green-500">&lt;= {indicador.verdeMax}{indicador.unidadMedida}</span>
+                          <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-yellow-400">&gt; {indicador.verdeMax}{indicador.unidadMedida} &lt;= {indicador.amarilloMax}{indicador.unidadMedida}</span>
+                          <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-red-500">&gt; {indicador.amarilloMax}{indicador.unidadMedida}</span>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+  
+                {/* Información General */}
+                <div className="border rounded overflow-hidden">
+                  <div className="px-3 py-1 bg-muted font-semibold text-xs uppercase tracking-wide border-b text-center">Información General</div>
+                  <div className="px-3 py-0.5 bg-muted/30 text-xs font-medium border-b text-center">Definición</div>
+                  <table className="w-full text-xs border-collapse bg-white">
+                    <tbody>
+                      <tr className="border-b">
+                        <td className="px-3 py-1.5 font-semibold bg-muted/20 w-1/4 border-r">Clase</td>
+                        <td className="px-3 py-1.5 w-1/4 border-r">{indicador.clase}</td>
+                        <td className="px-3 py-1.5 font-semibold bg-muted/20 w-1/4 border-r">Tipo</td>
+                        <td className="px-3 py-1.5 capitalize">{indicador.tipo}</td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r">Código</td>
+                        <td className="px-3 py-1.5 border-r">{indicador.codigo}</td>
+                        <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r">Nombre</td>
+                        <td className="px-3 py-1.5">{indicador.nombre}</td>
+                      </tr>
+                      {indicador.descripcion && (
+                        <tr className="border-b">
+                          <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r">Descripción</td>
+                          <td className="px-3 py-1.5" colSpan={3}>{indicador.descripcion}</td>
+                        </tr>
+                      )}
+                      <tr>
+                        <td colSpan={4} className="px-3 py-0.5 bg-muted/30 font-medium text-center border-y">Información adicional</td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r">Fuente de información</td>
+                        <td className="px-3 py-1.5" colSpan={3}>{indicador.fuenteInformacion || '—'}</td>
+                      </tr>
+                      {indicador.controlCambios && indicador.controlCambios.length > 0 && (
+                        <tr>
+                          <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r align-top">Control de cambios</td>
+                          <td className="px-3 py-1.5" colSpan={3}>
+                            <ul className="space-y-0.5">
+                              {indicador.controlCambios.map((c, i) => (
+                                <li key={i}>— {c.fecha} — {c.descripcion}</li>
+                              ))}
+                            </ul>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+  
+                {/* Asociado a */}
+                <div className="border rounded overflow-hidden">
+                  <div className="px-3 py-1 bg-muted font-semibold text-xs uppercase tracking-wide border-b text-center">Asociado a</div>
+                  <table className="w-full text-xs border-collapse bg-white">
+                    <tbody>
+                      <tr>
+                        <td className="px-3 py-1.5 font-semibold bg-muted/20 w-1/4 border-r">Proceso / Área</td>
+                        <td className="px-3 py-1.5 text-muted-foreground font-mono border-r">{indicador.procesoId}</td>
+                        {indicador.subprocesoId ? (
+                          <>
+                            <td className="px-3 py-1.5 font-semibold bg-muted/20 w-1/4 border-r">Subproceso</td>
+                            <td className="px-3 py-1.5 text-muted-foreground font-mono">{indicador.subprocesoId}</td>
+                          </>
+                        ) : <td colSpan={2} />}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+  
+                {/* Medición */}
+                <div className="border rounded overflow-hidden">
+                  <div className="px-3 py-1 bg-muted font-semibold text-xs uppercase tracking-wide border-b text-center">Medición</div>
+                  <table className="w-full text-xs border-collapse bg-white">
+                    <tbody>
+                      <tr className="border-b">
+                        <td className="px-3 py-1.5 font-semibold bg-muted/20 w-1/4 border-r">Unidad de medida</td>
+                        <td className="px-3 py-1.5 border-r">{indicador.unidadMedida}</td>
+                        <td className="px-3 py-1.5 font-semibold bg-muted/20 w-1/4 border-r">Frecuencia</td>
+                        <td className="px-3 py-1.5 capitalize">{indicador.frecuencia}</td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r">Meta</td>
+                        <td className="px-3 py-1.5 border-r">{indicador.meta}{indicador.unidadMedida}</td>
+                        <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r">Día de corte</td>
+                        <td className="px-3 py-1.5">{indicador.diaCorte || '—'}</td>
+                      </tr>
+                      <tr>
+                        <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r">Finalidad</td>
+                        <td className="px-3 py-1.5 capitalize border-r">{indicador.finalidad}</td>
+                        <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r">Activo</td>
+                        <td className="px-3 py-1.5">{indicador.activo ? 'Sí' : 'No'}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+  
+                {/* Composición */}
+                {indicador.formula && (
+                  <div className="border rounded overflow-hidden">
+                    <div className="px-3 py-1 bg-muted font-semibold text-xs uppercase tracking-wide border-b text-center">Composición</div>
+                    <table className="w-full text-xs border-collapse bg-white">
+                      <tbody>
+                        <tr>
+                          <td className="px-3 py-1.5 font-semibold bg-muted/20 w-1/4 border-r">Fórmula</td>
+                          <td className="px-3 py-1.5 font-mono">{indicador.formula}</td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>
-
-              {/* Información General */}
-              <div className="border rounded overflow-hidden">
-                <div className="px-3 py-1 bg-muted font-semibold text-xs uppercase tracking-wide border-b text-center">Información General</div>
-                <div className="px-3 py-0.5 bg-muted/30 text-xs font-medium border-b text-center">Definición</div>
-                <table className="w-full text-xs border-collapse">
-                  <tbody>
-                    <tr className="border-b">
-                      <td className="px-3 py-1.5 font-semibold bg-muted/20 w-1/4 border-r">Clase</td>
-                      <td className="px-3 py-1.5 w-1/4 border-r">{indicador.clase}</td>
-                      <td className="px-3 py-1.5 font-semibold bg-muted/20 w-1/4 border-r">Tipo</td>
-                      <td className="px-3 py-1.5 capitalize">{indicador.tipo}</td>
-                    </tr>
-                    <tr className="border-b">
-                      <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r">Código</td>
-                      <td className="px-3 py-1.5 border-r">{indicador.codigo}</td>
-                      <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r">Nombre</td>
-                      <td className="px-3 py-1.5">{indicador.nombre}</td>
-                    </tr>
-                    {indicador.descripcion && (
-                      <tr className="border-b">
-                        <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r">Descripción</td>
-                        <td className="px-3 py-1.5" colSpan={3}>{indicador.descripcion}</td>
-                      </tr>
+            )}
+          </TabsContent>
+  
+          <TabsContent value="analisis" className="mt-4">
+            <div className="flex flex-col gap-4">
+              {mediciones.filter(m => m.periodo?.match(/^\d{4}-\d{2}$/)).length === 0 && (
+                <p className="text-muted-foreground text-sm">No hay mediciones registradas aún.</p>
+              )}
+              {[...mediciones]
+                .filter(m => m.periodo?.match(/^\d{4}-\d{2}$/))
+                .sort((a, b) => b.periodo.localeCompare(a.periodo))
+                .map((m) => (
+                  <div key={m.id} className="border rounded-lg p-4 flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className={`w-3 h-3 rounded-full ${SEMAFORO_COLORS[m.semaforo]}`} />
+                        <span className="font-semibold">{periodoLabelFull(m.periodo)}</span>
+                        <span className="text-lg font-bold">{m.valor}{indicador.unidadMedida}</span>
+                        <span className="text-sm text-muted-foreground">(Meta {indicador.meta}{indicador.unidadMedida})</span>
+                      </div>
+                      <span className="text-sm text-muted-foreground">{m.responsableNombre}</span>
+                    </div>
+                    {m.observacion && (
+                      <p className="text-sm text-muted-foreground italic">"{m.observacion}"</p>
                     )}
-                    <tr>
-                      <td colSpan={4} className="px-3 py-0.5 bg-muted/30 font-medium text-center border-y">Información adicional</td>
-                    </tr>
-                    <tr className="border-b">
-                      <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r">Fuente de información</td>
-                      <td className="px-3 py-1.5" colSpan={3}>{indicador.fuenteInformacion || '—'}</td>
-                    </tr>
-                    {indicador.controlCambios && indicador.controlCambios.length > 0 && (
-                      <tr>
-                        <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r align-top">Control de cambios</td>
-                        <td className="px-3 py-1.5" colSpan={3}>
-                          <ul className="space-y-0.5">
-                            {indicador.controlCambios.map((c, i) => (
-                              <li key={i}>— {c.fecha} — {c.descripcion}</li>
-                            ))}
-                          </ul>
-                        </td>
+                  </div>
+                ))}
+            </div>
+          </TabsContent>
+  
+          <TabsContent value="mediciones" className="mt-4">
+            <div className="flex flex-col gap-4">
+              <div className="flex justify-between items-center border-b pb-2">
+                <h3 className="font-semibold">Registro de mediciones</h3>
+                {userRole === 'superadmin' && !isAddingMedicion && (
+                  <Button size="sm" onClick={() => setIsAddingMedicion(true)}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Registrar medición
+                  </Button>
+                )}
+              </div>
+  
+              {isAddingMedicion && (
+                <div className="border rounded-lg p-4 flex flex-col gap-4">
+                  <h4 className="font-medium">Nueva medición</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <Label>Período</Label>
+                      <MonthYearPicker value={periodoDate} onChange={setPeriodoDate} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="valor">Valor ({indicador.unidadMedida})</Label>
+                      <Input id="valor" type="number" placeholder="Valor numérico" value={valor}
+                        onChange={(e) => setValor(e.target.value === '' ? '' : Number(e.target.value))} />
+                    </div>
+                    <div className="space-y-1 col-span-2">
+                      <Label htmlFor="observacion">Observación / Análisis</Label>
+                      <Textarea id="observacion" placeholder="Describa el comportamiento del indicador en este período..."
+                        rows={3} value={observacion} onChange={(e) => setObservacion(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="ghost" onClick={() => setIsAddingMedicion(false)} disabled={isSaving}>Cancelar</Button>
+                    <Button onClick={handleGuardarMedicion} disabled={isSaving}>
+                      {isSaving ? 'Guardando...' : 'Guardar medición'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+  
+              {mediciones.length === 0 && !isAddingMedicion && (
+                <p className="text-muted-foreground text-sm">No hay mediciones registradas.</p>
+              )}
+  
+              {mediciones.filter(m => m.periodo?.match(/^\d{4}-\d{2}$/)).length > 0 && (
+                <div className="rounded-md border overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="px-4 py-3 text-left font-medium">Período</th>
+                        <th className="px-4 py-3 text-left font-medium">Valor</th>
+                        <th className="px-4 py-3 text-left font-medium">Semáforo</th>
+                        <th className="px-4 py-3 text-left font-medium">Responsable</th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Asociado a */}
-              <div className="border rounded overflow-hidden">
-                <div className="px-3 py-1 bg-muted font-semibold text-xs uppercase tracking-wide border-b text-center">Asociado a</div>
-                <table className="w-full text-xs border-collapse">
-                  <tbody>
-                    <tr>
-                      <td className="px-3 py-1.5 font-semibold bg-muted/20 w-1/4 border-r">Proceso / Área</td>
-                      <td className="px-3 py-1.5 text-muted-foreground font-mono border-r">{indicador.procesoId}</td>
-                      {indicador.subprocesoId ? (
-                        <>
-                          <td className="px-3 py-1.5 font-semibold bg-muted/20 w-1/4 border-r">Subproceso</td>
-                          <td className="px-3 py-1.5 text-muted-foreground font-mono">{indicador.subprocesoId}</td>
-                        </>
-                      ) : <td colSpan={2} />}
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Medición */}
-              <div className="border rounded overflow-hidden">
-                <div className="px-3 py-1 bg-muted font-semibold text-xs uppercase tracking-wide border-b text-center">Medición</div>
-                <table className="w-full text-xs border-collapse">
-                  <tbody>
-                    <tr className="border-b">
-                      <td className="px-3 py-1.5 font-semibold bg-muted/20 w-1/4 border-r">Unidad de medida</td>
-                      <td className="px-3 py-1.5 border-r">{indicador.unidadMedida}</td>
-                      <td className="px-3 py-1.5 font-semibold bg-muted/20 w-1/4 border-r">Frecuencia</td>
-                      <td className="px-3 py-1.5 capitalize">{indicador.frecuencia}</td>
-                    </tr>
-                    <tr className="border-b">
-                      <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r">Meta</td>
-                      <td className="px-3 py-1.5 border-r">{indicador.meta}{indicador.unidadMedida}</td>
-                      <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r">Día de corte</td>
-                      <td className="px-3 py-1.5">{indicador.diaCorte || '—'}</td>
-                    </tr>
-                    <tr>
-                      <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r">Finalidad</td>
-                      <td className="px-3 py-1.5 capitalize border-r">{indicador.finalidad}</td>
-                      <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r">Activo</td>
-                      <td className="px-3 py-1.5">{indicador.activo ? 'Sí' : 'No'}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Composición */}
-              {indicador.formula && (
-                <div className="border rounded overflow-hidden">
-                  <div className="px-3 py-1 bg-muted font-semibold text-xs uppercase tracking-wide border-b text-center">Composición</div>
-                  <table className="w-full text-xs border-collapse">
+                    </thead>
                     <tbody>
-                      <tr>
-                        <td className="px-3 py-1.5 font-semibold bg-muted/20 w-1/4 border-r">Fórmula</td>
-                        <td className="px-3 py-1.5 font-mono">{indicador.formula}</td>
-                      </tr>
+                      {[...mediciones]
+                        .filter(m => m.periodo?.match(/^\d{4}-\d{2}$/))
+                        .sort((a, b) => b.periodo.localeCompare(a.periodo))
+                        .map((m) => (
+                          <tr key={m.id} className="border-b last:border-0">
+                            <td className="px-4 py-3 capitalize">{periodoLabelFull(m.periodo)}</td>
+                            <td className="px-4 py-3 font-bold">{m.valor}{indicador.unidadMedida}</td>
+                            <td className="px-4 py-3">
+                              <span className="inline-flex items-center gap-1.5 text-xs font-medium">
+                                <span className={`w-2.5 h-2.5 rounded-full ${SEMAFORO_COLORS[m.semaforo]}`} />
+                                {SEMAFORO_LABELS[m.semaforo]}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-muted-foreground">{m.responsableNombre}</td>
+                          </tr>
+                        ))}
                     </tbody>
                   </table>
                 </div>
               )}
             </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="analisis" className="mt-4">
-          <div className="flex flex-col gap-4">
-            {mediciones.filter(m => m.periodo?.match(/^\d{4}-\d{2}$/)).length === 0 && (
-              <p className="text-muted-foreground text-sm">No hay mediciones registradas aún.</p>
-            )}
-            {[...mediciones]
-              .filter(m => m.periodo?.match(/^\d{4}-\d{2}$/))
-              .sort((a, b) => b.periodo.localeCompare(a.periodo))
-              .map((m) => (
-                <div key={m.id} className="border rounded-lg p-4 flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className={`w-3 h-3 rounded-full ${SEMAFORO_COLORS[m.semaforo]}`} />
-                      <span className="font-semibold">{periodoLabelFull(m.periodo)}</span>
-                      <span className="text-lg font-bold">{m.valor}{indicador.unidadMedida}</span>
-                      <span className="text-sm text-muted-foreground">(Meta {indicador.meta}{indicador.unidadMedida})</span>
-                    </div>
-                    <span className="text-sm text-muted-foreground">{m.responsableNombre}</span>
-                  </div>
-                  {m.observacion && (
-                    <p className="text-sm text-muted-foreground italic">"{m.observacion}"</p>
-                  )}
-                </div>
-              ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="mediciones" className="mt-4">
-          <div className="flex flex-col gap-4">
-            <div className="flex justify-between items-center border-b pb-2">
-              <h3 className="font-semibold">Registro de mediciones</h3>
-              {userRole === 'superadmin' && !isAddingMedicion && (
-                <Button size="sm" onClick={() => setIsAddingMedicion(true)}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Registrar medición
-                </Button>
-              )}
-            </div>
-
-            {isAddingMedicion && (
-              <div className="border rounded-lg p-4 flex flex-col gap-4">
-                <h4 className="font-medium">Nueva medición</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <Label>Período</Label>
-                    <MonthYearPicker value={periodoDate} onChange={setPeriodoDate} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="valor">Valor ({indicador.unidadMedida})</Label>
-                    <Input id="valor" type="number" placeholder="Valor numérico" value={valor}
-                      onChange={(e) => setValor(e.target.value === '' ? '' : Number(e.target.value))} />
-                  </div>
-                  <div className="space-y-1 col-span-2">
-                    <Label htmlFor="observacion">Observación / Análisis</Label>
-                    <Textarea id="observacion" placeholder="Describa el comportamiento del indicador en este período..."
-                      rows={3} value={observacion} onChange={(e) => setObservacion(e.target.value)} />
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="ghost" onClick={() => setIsAddingMedicion(false)} disabled={isSaving}>Cancelar</Button>
-                  <Button onClick={handleGuardarMedicion} disabled={isSaving}>
-                    {isSaving ? 'Guardando...' : 'Guardar medición'}
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {mediciones.length === 0 && !isAddingMedicion && (
-              <p className="text-muted-foreground text-sm">No hay mediciones registradas.</p>
-            )}
-
-            {mediciones.filter(m => m.periodo?.match(/^\d{4}-\d{2}$/)).length > 0 && (
-              <div className="rounded-md border overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/50">
-                      <th className="px-4 py-3 text-left font-medium">Período</th>
-                      <th className="px-4 py-3 text-left font-medium">Valor</th>
-                      <th className="px-4 py-3 text-left font-medium">Semáforo</th>
-                      <th className="px-4 py-3 text-left font-medium">Responsable</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[...mediciones]
-                      .filter(m => m.periodo?.match(/^\d{4}-\d{2}$/))
-                      .sort((a, b) => b.periodo.localeCompare(a.periodo))
-                      .map((m) => (
-                        <tr key={m.id} className="border-b last:border-0">
-                          <td className="px-4 py-3 capitalize">{periodoLabelFull(m.periodo)}</td>
-                          <td className="px-4 py-3 font-bold">{m.valor}{indicador.unidadMedida}</td>
-                          <td className="px-4 py-3">
-                            <span className="inline-flex items-center gap-1.5 text-xs font-medium">
-                              <span className={`w-2.5 h-2.5 rounded-full ${SEMAFORO_COLORS[m.semaforo]}`} />
-                              {SEMAFORO_LABELS[m.semaforo]}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-muted-foreground">{m.responsableNombre}</td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-}
+          </TabsContent>
+        </Tabs>
+      </div>
+    );
+  }
