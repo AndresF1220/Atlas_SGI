@@ -1,4 +1,5 @@
 'use client';
+import React from 'react';
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -11,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ArrowLeft, CalendarIcon, PlusCircle, Pencil } from 'lucide-react';
+import { ArrowLeft, CalendarIcon, PlusCircle, Pencil, ChevronDown, ChevronUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
@@ -101,6 +102,12 @@ const SEMAFORO_COLORS = { verde: 'bg-green-500', amarillo: 'bg-yellow-400', rojo
 const SEMAFORO_HEX = { verde: '#22c55e', amarillo: '#facc15', rojo: '#ef4444' };
 const SEMAFORO_LABELS = { verde: 'Verde', amarillo: 'Amarillo', rojo: 'Rojo' };
 
+// Formatea valor + unidad: % se muestra, otras unidades solo el número
+const fmtValor = (valor: number, unidad: string) => {
+  if (unidad === '%') return `${valor}%`;
+  return `${valor}`;
+};
+
 const periodoLabel = (periodo: string) => {
   const [a, m] = periodo.split('-');
   return `${MESES.find(x => x.value === parseInt(m) - 1)?.label.slice(0, 3) ?? m} ${a}`;
@@ -121,7 +128,7 @@ const CustomBarTooltip = ({ active, payload, label, unidadMedida }: any) => {
       <p className="font-semibold text-gray-900 border-b pb-1 mb-0.5">{label}</p>
       <p className="flex items-center gap-2">
         <span className="text-gray-500">Valor:</span>
-        <span className="font-bold text-gray-900">{data.valor}{unidadMedida}</span>
+        <span className="font-bold text-gray-900">{fmtValor(data.valor, unidadMedida)}</span>
       </p>
       {data.observacion && (
         <div className="mt-0.5 text-xs max-w-[260px] leading-relaxed">
@@ -147,7 +154,7 @@ const MetaTooltipLabel = ({ viewBox, meta, unidadMedida }: any) => {
         fontSize={11}
         fontWeight="500"
       >
-        Meta {meta}{unidadMedida}
+        {`Meta ${unidadMedida === '%' ? `${meta}%` : `${meta} ${unidadMedida}`}`}
       </text>
     </g>
   );
@@ -169,10 +176,16 @@ export default function IndicadorDetallePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [tabActiva, setTabActiva] = useState('seguimiento');
 
+  const [isStatsVisible, setIsStatsVisible] = useState(false);
+  const [isComparativeVisible, setIsComparativeVisible] = useState(false);
+  const [comparativeYear1, setComparativeYear1] = useState((new Date().getFullYear() - 1).toString());
+  const [comparativeYear2, setComparativeYear2] = useState((new Date().getFullYear()).toString());
+
   // Estado para tooltip de la meta
   const [metaTooltip, setMetaTooltip] = useState<{ x: number; y: number; visible: boolean }>({
     x: 0, y: 0, visible: false,
   });
+  const chartContainerRef = React.useRef<HTMLDivElement>(null);
 
   // Tooltip manual para barras
   const [barTooltip, setBarTooltip] = useState<{
@@ -275,8 +288,48 @@ export default function IndicadorDetallePage() {
     : (indicador.unidadMedida.toLowerCase().startsWith('und') ? 'Unidades'
       : indicador.unidadMedida);
 
+  // --- Estadísticas ---
+  const validValues = datosGrafica.map(d => d.valor);
+  let stats: any = null;
+  if (validValues.length > 0) {
+    const min = Math.min(...validValues);
+    const max = Math.max(...validValues);
+    const sum = validValues.reduce((a, b) => a + b, 0);
+    const avg = sum / validValues.length;
+    const range = max - min;
+    const variance = validValues.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / validValues.length;
+    const stdDev = Math.sqrt(variance);
+    const sorted = [...validValues].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    const median = sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    stats = { min, max, avg, range, variance, stdDev, median };
+  }
+
+  // --- Comparativo Anual ---
+  const availableYearsSet = new Set(mediciones.filter(m => m.periodo?.match(/^\d{4}-\d{2}$/)).map(m => m.periodo.split('-')[0]));
+  if (!availableYearsSet.has(comparativeYear1)) availableYearsSet.add(comparativeYear1);
+  if (!availableYearsSet.has(comparativeYear2)) availableYearsSet.add(comparativeYear2);
+  const availableYearsList = Array.from(availableYearsSet).sort();
+
+  const comparativeData = MESES.map(mes => {
+    const mesStr = String(mes.value + 1).padStart(2, '0');
+    const p1 = `${comparativeYear1}-${mesStr}`;
+    const p2 = `${comparativeYear2}-${mesStr}`;
+    const m1 = mediciones.find(m => m.periodo === p1);
+    const m2 = mediciones.find(m => m.periodo === p2);
+    const v1 = m1 !== undefined ? m1.valor : null;
+    const v2 = m2 !== undefined ? m2.valor : null;
+    let variacion: number | null = null;
+    if (v1 !== null && v2 !== null && v1 !== 0) {
+      variacion = ((v2 - v1) / v1) * 100;
+    } else if (v1 === 0 && v2 !== null && v2 !== 0) {
+      variacion = 100;
+    }
+    return { mesLabel: mes.label, v1, v2, variacion };
+  });
+
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 min-h-[101vh]">
 
       <div className="flex flex-col gap-1 -mb-3">
         <Button variant="ghost" size="sm" className="w-fit h-8 px-2" onClick={() => router.back()}>
@@ -299,7 +352,7 @@ export default function IndicadorDetallePage() {
           {datosGrafica.length === 0 ? (
             <p className="text-muted-foreground text-sm">No hay mediciones para mostrar la gráfica.</p>
           ) : (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 rounded-lg border bg-white p-4 shadow-sm">
               {/* Título centrado */}
               <div className="text-center mb-1">
                 <h3 className="text-base sm:text-lg font-bold uppercase tracking-wide">{indicador.nombre}</h3>
@@ -308,8 +361,34 @@ export default function IndicadorDetallePage() {
 
               {/* Contenedor con posición relativa para el tooltip manual */}
               <div
+                ref={chartContainerRef}
                 className="relative"
-                onMouseLeave={() => setBarTooltip(prev => ({ ...prev, visible: false }))}
+                onMouseLeave={() => {
+                  setBarTooltip(prev => ({ ...prev, visible: false }));
+                  setMetaTooltip(prev => ({ ...prev, visible: false }));
+                }}
+                onMouseMove={(e: React.MouseEvent<HTMLDivElement>) => {
+                  if (!chartContainerRef.current || !indicador) return;
+                  const rect = chartContainerRef.current.getBoundingClientRect();
+                  const mouseY = e.clientY - rect.top;
+                  const metaLine = chartContainerRef.current.querySelector('.recharts-reference-line line');
+                  if (metaLine) {
+                    const lineY = parseFloat(metaLine.getAttribute('y1') ?? '0');
+                    const svgEl = (metaLine as SVGElement).closest('svg');
+                    const svgRect = svgEl?.getBoundingClientRect();
+                    if (svgRect) {
+                      const lineAbsY = svgRect.top + lineY - rect.top;
+                      const tolerance = 10;
+                      if (Math.abs(mouseY - lineAbsY) < tolerance) {
+                        const mouseX = e.clientX - rect.left;
+                        setMetaTooltip({ visible: true, x: mouseX, y: lineAbsY });
+                        setBarTooltip(prev => ({ ...prev, visible: false }));
+                      } else {
+                        setMetaTooltip(prev => ({ ...prev, visible: false }));
+                      }
+                    }
+                  }
+                }}
               >
                 <div className="h-[340px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -318,7 +397,29 @@ export default function IndicadorDetallePage() {
                       margin={{ top: 16, right: 24, left: 8, bottom: 5 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                      <XAxis dataKey="periodo" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                      <XAxis
+                        dataKey="periodo"
+                        tickLine={false}
+                        axisLine={false}
+                        interval={0}
+                        tick={({ x, y, payload }: any) => (
+                          <g transform={`translate(${x},${y})`}>
+                            <text
+                              x={0}
+                              y={0}
+                              dy={datosGrafica.length > 8 ? 0 : 12}
+                              dx={datosGrafica.length > 8 ? -4 : 0}
+                              textAnchor={datosGrafica.length > 8 ? 'end' : 'middle'}
+                              transform={datosGrafica.length > 8 ? 'rotate(-90)' : 'rotate(0)'}
+                              fontSize={11}
+                              fill="#6b7280"
+                            >
+                              {payload.value}
+                            </text>
+                          </g>
+                        )}
+                        height={datosGrafica.length > 8 ? 75 : 30}
+                      />
                       <YAxis
                         tick={{ fontSize: 11 }}
                         tickLine={false}
@@ -339,16 +440,17 @@ export default function IndicadorDetallePage() {
                         radius={[3, 3, 0, 0]}
                         onMouseEnter={(data: any, index: number, event: React.MouseEvent) => {
                           setHoveredBar(index);
-                          const containerRect = (event.currentTarget as SVGElement)
-                            .closest('.relative')
-                            ?.getBoundingClientRect();
+                          // Posición estática: centrada en la barra, encima de ella
+                          const barEl = event.currentTarget as SVGElement;
+                          const barRect = barEl.getBoundingClientRect();
+                          const containerRect = barEl.closest('.relative')?.getBoundingClientRect();
                           if (!containerRect) return;
-                          const ex = (event as any).clientX - containerRect.left;
-                          const ey = (event as any).clientY - containerRect.top;
+                          const cx = barRect.left + barRect.width / 2 - containerRect.left;
+                          const cy = barRect.top - containerRect.top - 8;
                           setBarTooltip({
                             visible: true,
-                            x: ex,
-                            y: ey,
+                            x: cx,
+                            y: cy,
                             data: {
                               periodo: data.periodo,
                               valor: data.valor,
@@ -357,14 +459,8 @@ export default function IndicadorDetallePage() {
                             },
                           });
                         }}
-                        onMouseMove={(_data: any, _index: number, event: React.MouseEvent) => {
-                          const containerRect = (event.currentTarget as SVGElement)
-                            .closest('.relative')
-                            ?.getBoundingClientRect();
-                          if (!containerRect) return;
-                          const ex = (event as any).clientX - containerRect.left;
-                          const ey = (event as any).clientY - containerRect.top;
-                          setBarTooltip(prev => ({ ...prev, x: ex, y: ey }));
+                        onMouseMove={(_data: any, _index: number, _event: React.MouseEvent) => {
+                          // No mover el tooltip — permanece estático arriba de la barra
                         }}
                         onMouseLeave={() => {
                           setHoveredBar(null);
@@ -403,42 +499,76 @@ export default function IndicadorDetallePage() {
                         stroke="#f97316"
                         strokeDasharray="6 3"
                         strokeWidth={2}
-                        label={
-                          <MetaTooltipLabel
-                            meta={indicador.meta}
-                            unidadMedida={indicador.unidadMedida}
-                          />
-                        }
                       />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
 
-                {/* Tooltip manual — solo aparece al estar sobre la barra */}
-                {barTooltip.visible && barTooltip.data && (
+                {/* Tooltip de la meta */}
+                {metaTooltip.visible && indicador && (
                   <div
-                    className="absolute z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-sm flex flex-col gap-1.5 pointer-events-none"
+                    className="absolute z-50 pointer-events-none"
                     style={{
-                      left: barTooltip.x + 12,
-                      top: barTooltip.y - 10,
-                      transform: barTooltip.x > 600 ? 'translateX(-110%)' : undefined,
+                      left: metaTooltip.x,
+                      top: metaTooltip.y - 8,
+                      transform: 'translate(-50%, -100%)',
                     }}
                   >
-                    <p className="font-semibold text-gray-900 border-b pb-1 mb-0.5">
-                      {barTooltip.data.periodo}
-                    </p>
-                    <p className="flex items-center gap-2">
-                      <span className="text-gray-500">Valor:</span>
-                      <span className="font-bold text-gray-900">
-                        {barTooltip.data.valor}{indicador.unidadMedida}
-                      </span>
-                    </p>
-                    {barTooltip.data.observacion && (
-                      <div className="mt-0.5 text-xs max-w-[260px] leading-relaxed">
-                        <span className="font-medium text-gray-700">Análisis: </span>
-                        <span className="text-gray-500 italic">{barTooltip.data.observacion}</span>
-                      </div>
-                    )}
+                    <div className="bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2 text-sm min-w-[100px]">
+                      <p className="font-bold text-gray-900 text-sm">Meta</p>
+                      <p className="text-sm text-gray-600">{fmtValor(indicador.meta, indicador.unidadMedida)}</p>
+                    </div>
+                    <div className="relative flex justify-center" style={{ height: 8 }}>
+                      <div style={{ position: 'absolute', top: 0, width: 0, height: 0, borderLeft: '8px solid transparent', borderRight: '8px solid transparent', borderTop: '8px solid #d1d5db' }} />
+                      <div style={{ position: 'absolute', top: 0, width: 0, height: 0, borderLeft: '7px solid transparent', borderRight: '7px solid transparent', borderTop: '7px solid white' }} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Tooltip manual — estático centrado arriba de la barra */}
+                {barTooltip.visible && barTooltip.data && (
+                  <div
+                    className="absolute z-50 pointer-events-none"
+                    style={{
+                      left: barTooltip.x,
+                      top: barTooltip.y - 8,
+                      transform: 'translate(-50%, -100%)',
+                    }}
+                  >
+                    <div className="bg-white border border-gray-200 rounded-lg shadow-lg px-3 py-2 text-sm flex flex-col gap-0.5 min-w-[120px]">
+                      <p className="font-bold text-gray-900 text-sm">Medición</p>                      <p className="text-sm">
+                        <span className="font-bold text-gray-900">{barTooltip.data.periodo}:</span>
+                        <span className="text-gray-600 ml-1">{fmtValor(barTooltip.data.valor, indicador.unidadMedida)}</span>
+                      </p>
+                      {barTooltip.data.observacion && (
+                        <p className="text-xs text-gray-500 max-w-[220px] leading-relaxed line-clamp-3">
+                          {barTooltip.data.observacion}
+                        </p>
+                      )}
+                    </div>
+                    {/* Flecha apuntando hacia abajo — borde gris + relleno blanco */}
+                    <div className="relative flex justify-center" style={{ height: 8 }}>
+                      {/* sombra/borde de la flecha */}
+                      <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        width: 0,
+                        height: 0,
+                        borderLeft: '8px solid transparent',
+                        borderRight: '8px solid transparent',
+                        borderTop: '8px solid #d1d5db',
+                      }} />
+                      {/* relleno blanco encima */}
+                      <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        width: 0,
+                        height: 0,
+                        borderLeft: '7px solid transparent',
+                        borderRight: '7px solid transparent',
+                        borderTop: '7px solid white',
+                      }} />
+                    </div>
                   </div>
                 )}
               </div>
@@ -446,19 +576,155 @@ export default function IndicadorDetallePage() {
               {/* Leyenda centrada debajo */}
               <div className="flex items-center justify-center gap-5 text-sm text-muted-foreground flex-wrap pt-1">
                 <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-sm bg-green-500 inline-block" /> Verde
+                  <span className="w-3 h-3 rounded-sm bg-green-500 inline-block" /> Óptimo
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-sm bg-yellow-400 inline-block" /> Amarillo
+                  <span className="w-3 h-3 rounded-sm bg-yellow-400 inline-block" /> Aceptable
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 rounded-sm bg-red-500 inline-block" /> Rojo
+                  <span className="w-3 h-3 rounded-sm bg-red-500 inline-block" /> Crítico
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="inline-block w-5 h-0 border-t-2 border-dashed border-orange-400" />
-                  Meta: {indicador.meta}{indicador.unidadMedida}
+                  Meta: {fmtValor(indicador.meta, indicador.unidadMedida)}
                 </span>
               </div>
+
+              {/* Controles Estadísticas y Comparativo */}
+              <div className="flex items-center justify-center gap-2 mt-2">
+                <Button 
+                  variant={isStatsVisible ? 'default' : 'outline'} 
+                  size="sm" 
+                  onClick={() => { setIsStatsVisible(!isStatsVisible); setIsComparativeVisible(false); }}
+                >
+                  Estadísticas
+                  {isStatsVisible ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
+                </Button>
+                <Button 
+                  variant={isComparativeVisible ? 'default' : 'outline'} 
+                  size="sm" 
+                  onClick={() => { setIsComparativeVisible(!isComparativeVisible); setIsStatsVisible(false); }}
+                >
+                  Comparativo anual
+                  {isComparativeVisible ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
+                </Button>
+              </div>
+
+              {/* Contenedor Estadísticas */}
+              {isStatsVisible && stats && (
+                <div className="mt-2 border rounded-lg overflow-hidden bg-white shadow-sm animate-in fade-in duration-300">
+                  <table className="w-full text-sm text-center">
+                    <thead className="bg-muted/50 border-b">
+                      <tr>
+                        <th className="py-2 px-3 font-semibold text-gray-700">Mínimo</th>
+                        <th className="py-2 px-3 font-semibold text-gray-700">Máximo</th>
+                        <th className="py-2 px-3 font-semibold text-gray-700">Desviación</th>
+                        <th className="py-2 px-3 font-semibold text-gray-700">Promedio</th>
+                        <th className="py-2 px-3 font-semibold text-gray-700">Rango</th>
+                        <th className="py-2 px-3 font-semibold text-gray-700">Varianza</th>
+                        <th className="py-2 px-3 font-semibold text-gray-700">Mediana</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-x border-b">
+                      <tr>
+                        <td className="py-3 px-3">{fmtValor(Number(stats.min.toFixed(1)), indicador.unidadMedida)}</td>
+                        <td className="py-3 px-3">{fmtValor(Number(stats.max.toFixed(1)), indicador.unidadMedida)}</td>
+                        <td className="py-3 px-3">{stats.stdDev.toFixed(2)}</td>
+                        <td className="py-3 px-3">{fmtValor(Number(stats.avg.toFixed(1)), indicador.unidadMedida)}</td>
+                        <td className="py-3 px-3">{fmtValor(Number(stats.range.toFixed(1)), indicador.unidadMedida)}</td>
+                        <td className="py-3 px-3">{stats.variance.toFixed(2)}</td>
+                        <td className="py-3 px-3">{fmtValor(Number(stats.median.toFixed(1)), indicador.unidadMedida)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Contenedor Comparativo */}
+              {isComparativeVisible && (
+                <div className="mt-2 border rounded-lg bg-white shadow-sm p-4 animate-in fade-in duration-300">
+                  <div className="flex items-center justify-center gap-4 mb-4">
+                    <span className="font-semibold text-sm text-gray-800">Generar comparativo</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">Años</span>
+                      <select 
+                        className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        value={comparativeYear1} 
+                        onChange={(e) => setComparativeYear1(e.target.value)}
+                      >
+                        {availableYearsList.map(y => <option key={y} value={y}>{y}</option>)}
+                      </select>
+                      <select 
+                        className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        value={comparativeYear2} 
+                        onChange={(e) => setComparativeYear2(e.target.value)}
+                      >
+                        {availableYearsList.map(y => <option key={y} value={y}>{y}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto rounded border">
+                    <table className="w-full text-sm text-center">
+                      <thead className="bg-muted/50 border-b">
+                        <tr className="divide-x divide-gray-200">
+                          <th className="py-2 px-3 font-semibold text-gray-700 w-1/4 select-none text-left">Periodos</th>
+                          <th className="py-2 px-3 font-semibold text-gray-700 w-[15%]">{comparativeYear1}</th>
+                          <th className="py-2 px-3 font-semibold text-gray-700 w-[15%]">{comparativeYear2}</th>
+                          <th className="py-2 px-3 font-semibold text-orange-500 w-[15%]">Meta</th>
+                          <th className="py-2 px-3 font-semibold text-gray-700 flex-1">% Variación</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 text-gray-700">
+                        {comparativeData.map(row => (
+                          <tr key={row.mesLabel} className="divide-x divide-gray-200 hover:bg-muted/30">
+                            <td className="py-2 px-3 font-medium bg-muted/10 text-left">{row.mesLabel}</td>
+                            <td className="py-2 px-3">{row.v1 !== null ? Number(row.v1.toFixed(1)) : ''}</td>
+                            <td className="py-2 px-3">{row.v2 !== null ? Number(row.v2.toFixed(1)) : ''}</td>
+                            <td className="py-2 px-3 text-orange-600">{fmtValor(indicador.meta, indicador.unidadMedida)}</td>
+                            <td className="py-2 px-3">
+                              {row.variacion !== null ? (
+                                <span className={row.variacion > 0 ? 'text-green-600 font-medium' : row.variacion < 0 ? 'text-red-500 font-medium' : 'text-gray-500 font-medium'}>
+                                  {row.variacion > 0 ? '+' : ''}{row.variacion.toFixed(2)}
+                                </span>
+                              ) : ''}
+                            </td>
+                          </tr>
+                        ))}
+                        {/* Fila de Acumulado */}
+                        {(() => {
+                          const sumV1 = comparativeData.reduce((sum, row) => sum + (row.v1 || 0), 0);
+                          const sumV2 = comparativeData.reduce((sum, row) => sum + (row.v2 || 0), 0);
+                          const hasDataY1 = comparativeData.some(row => row.v1 !== null);
+                          const hasDataY2 = comparativeData.some(row => row.v2 !== null);
+                          let varAcum: number | null = null;
+                          if (hasDataY1 || hasDataY2) {
+                            if (sumV1 !== 0) {
+                              varAcum = ((sumV2 - sumV1) / sumV1) * 100;
+                            } else if (sumV2 !== 0) {
+                              varAcum = 100;
+                            }
+                          }
+                          return (hasDataY1 || hasDataY2) ? (
+                            <tr className="divide-x divide-gray-200 bg-muted/20 font-bold border-t-2">
+                              <td className="py-2 px-3 text-left">Acumulado</td>
+                              <td className="py-2 px-3">{Number(sumV1.toFixed(1))}</td>
+                              <td className="py-2 px-3">{Number(sumV2.toFixed(1))}</td>
+                              <td className="py-2 px-3 text-orange-600">—</td>
+                              <td className="py-2 px-3">
+                                {varAcum !== null ? (
+                                  <span className={varAcum > 0 ? 'text-green-600' : varAcum < 0 ? 'text-red-500' : 'text-gray-500'}>
+                                    {varAcum > 0 ? '+' : ''}{varAcum.toFixed(2)}
+                                  </span>
+                                ) : ''}
+                              </td>
+                            </tr>
+                          ) : null;
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </TabsContent>
@@ -491,12 +757,12 @@ export default function IndicadorDetallePage() {
                 <div className="px-4 py-3">
                   <p className="text-xs text-muted-foreground font-medium mb-0.5">Valor</p>
                   <p className="text-lg font-bold" style={{ color: SEMAFORO_HEX[modalMedicion.data.semaforo] }}>
-                    {modalMedicion.data.valor}{indicador.unidadMedida}
+                    {fmtValor(modalMedicion.data.valor, indicador.unidadMedida)}
                   </p>
                 </div>
                 <div className="px-4 py-3">
                   <p className="text-xs text-muted-foreground font-medium mb-0.5">Meta</p>
-                  <p className="text-lg font-bold">{indicador.meta}{indicador.unidadMedida}</p>
+                  <p className="text-lg font-bold">{fmtValor(indicador.meta, indicador.unidadMedida)}</p>
                 </div>
               </div>
 
@@ -506,25 +772,25 @@ export default function IndicadorDetallePage() {
                   {indicador.finalidad === 'maximizar' ? (
                     <>
                       <span className="flex-1 text-center py-1.5 rounded text-xs font-bold text-white bg-green-500">
-                        &gt;= {indicador.verdeMax}{indicador.unidadMedida}
+                        &gt;= {fmtValor(indicador.verdeMax!, indicador.unidadMedida)}
                       </span>
                       <span className="flex-1 text-center py-1.5 rounded text-xs font-bold text-white bg-yellow-400">
-                        &gt;= {indicador.amarilloMax} &lt; {indicador.verdeMax}{indicador.unidadMedida}
+                        &gt;= {indicador.amarilloMax} &lt; {fmtValor(indicador.verdeMax!, indicador.unidadMedida)}
                       </span>
                       <span className="flex-1 text-center py-1.5 rounded text-xs font-bold text-white bg-red-500">
-                        &lt; {indicador.amarilloMax}{indicador.unidadMedida}
+                        &lt; {fmtValor(indicador.amarilloMax!, indicador.unidadMedida)}
                       </span>
                     </>
                   ) : (
                     <>
                       <span className="flex-1 text-center py-1.5 rounded text-xs font-bold text-white bg-green-500">
-                        &lt;= {indicador.verdeMax}{indicador.unidadMedida}
+                        &lt;= {fmtValor(indicador.verdeMax!, indicador.unidadMedida)}
                       </span>
                       <span className="flex-1 text-center py-1.5 rounded text-xs font-bold text-white bg-yellow-400">
-                        &gt; {indicador.verdeMax} &lt;= {indicador.amarilloMax}{indicador.unidadMedida}
+                        &gt; {indicador.verdeMax} &lt;= {fmtValor(indicador.amarilloMax!, indicador.unidadMedida)}
                       </span>
                       <span className="flex-1 text-center py-1.5 rounded text-xs font-bold text-white bg-red-500">
-                        &gt; {indicador.amarilloMax}{indicador.unidadMedida}
+                        &gt; {fmtValor(indicador.amarilloMax!, indicador.unidadMedida)}
                       </span>
                     </>
                   )}
@@ -617,7 +883,7 @@ export default function IndicadorDetallePage() {
               {/* Resumen semáforo */}
               <div className="border rounded flex flex-col items-center gap-1.5 py-2 px-4 bg-muted/20">
                 <div className="flex items-center gap-5 flex-wrap justify-center">
-                  <span><strong>Meta:</strong> {indicador.meta}{indicador.unidadMedida}</span>
+                  <span><strong>Meta:</strong> {fmtValor(indicador.meta, indicador.unidadMedida)}</span>
                   <span><strong>Semáforo:</strong> Lineal</span>
                   <span><strong>Finalidad:</strong> {indicador.finalidad === 'maximizar' ? 'Maximizar' : 'Minimizar'}</span>
                 </div>
@@ -625,15 +891,15 @@ export default function IndicadorDetallePage() {
                   <div className="flex items-center gap-1.5 flex-wrap justify-center">
                     {indicador.finalidad === 'maximizar' ? (
                       <>
-                        <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-green-500">&gt;= {indicador.verdeMax}{indicador.unidadMedida}</span>
-                        <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-yellow-400">&gt;= {indicador.amarilloMax}{indicador.unidadMedida} &lt; {indicador.verdeMax}{indicador.unidadMedida}</span>
-                        <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-red-500">&lt; {indicador.amarilloMax}{indicador.unidadMedida}</span>
+                        <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-green-500">&gt;= {fmtValor(indicador.verdeMax!, indicador.unidadMedida)}</span>
+                        <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-yellow-400">&gt;= {fmtValor(indicador.amarilloMax!, indicador.unidadMedida)} &lt; {fmtValor(indicador.verdeMax!, indicador.unidadMedida)}</span>
+                        <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-red-500">&lt; {fmtValor(indicador.amarilloMax!, indicador.unidadMedida)}</span>
                       </>
                     ) : (
                       <>
-                        <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-green-500">&lt;= {indicador.verdeMax}{indicador.unidadMedida}</span>
-                        <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-yellow-400">&gt; {indicador.verdeMax}{indicador.unidadMedida} &lt;= {indicador.amarilloMax}{indicador.unidadMedida}</span>
-                        <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-red-500">&gt; {indicador.amarilloMax}{indicador.unidadMedida}</span>
+                        <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-green-500">&lt;= {fmtValor(indicador.verdeMax!, indicador.unidadMedida)}</span>
+                        <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-yellow-400">&gt; {fmtValor(indicador.verdeMax!, indicador.unidadMedida)} &lt;= {fmtValor(indicador.amarilloMax!, indicador.unidadMedida)}</span>
+                        <span className="px-2.5 py-0.5 rounded font-bold text-white text-xs bg-red-500">&gt; {fmtValor(indicador.amarilloMax!, indicador.unidadMedida)}</span>
                       </>
                     )}
                   </div>
@@ -719,7 +985,7 @@ export default function IndicadorDetallePage() {
                     </tr>
                     <tr className="border-b">
                       <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r">Meta</td>
-                      <td className="px-3 py-1.5 border-r">{indicador.meta}{indicador.unidadMedida}</td>
+                      <td className="px-3 py-1.5 border-r">{fmtValor(indicador.meta, indicador.unidadMedida)}</td>
                       <td className="px-3 py-1.5 font-semibold bg-muted/20 border-r">Día de corte</td>
                       <td className="px-3 py-1.5">{indicador.diaCorte || '—'}</td>
                     </tr>
@@ -766,8 +1032,8 @@ export default function IndicadorDetallePage() {
                     <div className="flex items-center gap-3">
                       <span className={`w-3 h-3 rounded-full ${SEMAFORO_COLORS[m.semaforo]}`} />
                       <span className="font-semibold">{periodoLabelFull(m.periodo)}</span>
-                      <span className="text-lg font-bold">{m.valor}{indicador.unidadMedida}</span>
-                      <span className="text-sm text-muted-foreground">(Meta {indicador.meta}{indicador.unidadMedida})</span>
+                      <span className="text-lg font-bold">{fmtValor(m.valor, indicador.unidadMedida)}</span>
+                      <span className="text-sm text-muted-foreground">(Meta {fmtValor(indicador.meta, indicador.unidadMedida)})</span>
                     </div>
                     <span className="text-sm text-muted-foreground">{m.responsableNombre}</span>
                   </div>
@@ -842,7 +1108,7 @@ export default function IndicadorDetallePage() {
                       .map((m) => (
                         <tr key={m.id} className="border-b last:border-0">
                           <td className="px-4 py-3 capitalize">{periodoLabelFull(m.periodo)}</td>
-                          <td className="px-4 py-3 font-bold">{m.valor}{indicador.unidadMedida}</td>
+                          <td className="px-4 py-3 font-bold">{fmtValor(m.valor, indicador.unidadMedida)}</td>
                           <td className="px-4 py-3">
                             <span className="inline-flex items-center gap-1.5 text-xs font-medium">
                               <span className={`w-2.5 h-2.5 rounded-full ${SEMAFORO_COLORS[m.semaforo]}`} />
