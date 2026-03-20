@@ -25,10 +25,10 @@ export interface FilaESC {
 const FASES = ['Planear', 'Hacer', 'Verificar', 'Actuar'] as const;
 
 const faseColors: Record<string, string> = {
-  Planear:   'bg-blue-50 text-blue-800 border-blue-200',
-  Hacer:     'bg-green-50 text-green-800 border-green-200',
+  Planear: 'bg-blue-50 text-blue-800 border-blue-200',
+  Hacer: 'bg-green-50 text-green-800 border-green-200',
   Verificar: 'bg-yellow-50 text-yellow-800 border-yellow-200',
-  Actuar:    'bg-purple-50 text-purple-800 border-purple-200',
+  Actuar: 'bg-purple-50 text-purple-800 border-purple-200',
 };
 
 interface Props {
@@ -114,7 +114,7 @@ export default function EntradasSalidasPanel({ entidadId, tipoEntidad }: Props) 
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-xs border-collapse">
+            <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="bg-gray-50">
                   <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-gray-700">Proveedor</th>

@@ -25,6 +25,7 @@ import {
 import FormIndicador from '@/components/indicadores/FormIndicador';
 import { doc } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase, useDoc } from '@/firebase';
+import { useArea, useProceso } from '@/hooks/use-areas-data';
 
 const MESES = [
   { value: 0, label: 'Enero' }, { value: 1, label: 'Febrero' },
@@ -166,7 +167,16 @@ export default function IndicadorDetallePage() {
   const { toast } = useToast();
   const { user, userRole } = useAuth();
   const indicadorId = params.indicadorId as string;
+  const areaId = params.areaId as string;
+  const procesoId = params.procesoId as string;
   const firestore = useFirestore();
+
+  const { area } = useArea(areaId);
+  const { proceso } = useProceso(areaId, procesoId);
+
+  const subtitulo = procesoId === areaId
+    ? (area?.nombre ?? '')
+    : (proceso?.nombre ?? '');
 
   const [indicador, setIndicador] = useState<Indicador | null>(null);
   const [mediciones, setMediciones] = useState<Medicion[]>([]);
@@ -356,7 +366,7 @@ export default function IndicadorDetallePage() {
               {/* Título centrado */}
               <div className="text-center mb-1">
                 <h3 className="text-base sm:text-lg font-bold uppercase tracking-wide">{indicador.nombre}</h3>
-                <p className="text-sm text-muted-foreground">{indicador.procesoId}</p>
+                <p className="text-sm text-muted-foreground">{subtitulo}</p>
               </div>
 
               {/* Contenedor con posición relativa para el tooltip manual */}
@@ -592,17 +602,17 @@ export default function IndicadorDetallePage() {
 
               {/* Controles Estadísticas y Comparativo */}
               <div className="flex items-center justify-center gap-2 mt-2">
-                <Button 
-                  variant={isStatsVisible ? 'default' : 'outline'} 
-                  size="sm" 
+                <Button
+                  variant={isStatsVisible ? 'default' : 'outline'}
+                  size="sm"
                   onClick={() => { setIsStatsVisible(!isStatsVisible); setIsComparativeVisible(false); }}
                 >
                   Estadísticas
                   {isStatsVisible ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
                 </Button>
-                <Button 
-                  variant={isComparativeVisible ? 'default' : 'outline'} 
-                  size="sm" 
+                <Button
+                  variant={isComparativeVisible ? 'default' : 'outline'}
+                  size="sm"
                   onClick={() => { setIsComparativeVisible(!isComparativeVisible); setIsStatsVisible(false); }}
                 >
                   Comparativo anual
@@ -647,16 +657,16 @@ export default function IndicadorDetallePage() {
                     <span className="font-semibold text-sm text-gray-800">Generar comparativo</span>
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-gray-600">Años</span>
-                      <select 
+                      <select
                         className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                        value={comparativeYear1} 
+                        value={comparativeYear1}
                         onChange={(e) => setComparativeYear1(e.target.value)}
                       >
                         {availableYearsList.map(y => <option key={y} value={y}>{y}</option>)}
                       </select>
-                      <select 
+                      <select
                         className="h-8 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                        value={comparativeYear2} 
+                        value={comparativeYear2}
                         onChange={(e) => setComparativeYear2(e.target.value)}
                       >
                         {availableYearsList.map(y => <option key={y} value={y}>{y}</option>)}

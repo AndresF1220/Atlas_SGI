@@ -24,13 +24,13 @@ export type Area = {
 }
 
 export interface CaracterizacionData {
-  objetivo: string;
-  alcance: string;
-  responsable: string;
-  editable?: boolean;
-  codigo?: string;
-  version?: string;
-  tipoProceso?: string;
+    objetivo: string;
+    alcance: string;
+    responsable: string;
+    editable?: boolean;
+    codigo?: string;
+    version?: string;
+    tipoProceso?: string;
 }
 
 export function useAreas() {
@@ -92,8 +92,8 @@ export function useCaracterizacion(caracterizacionId: string | null) {
 export function useEntityName(
     entityId: string | null,
     entityType: 'area' | 'proceso' | 'subproceso' | undefined,
-    areaId?: string | null, // Needed for procesos and subprocesos
-    procesoId?: string | null // Needed for subprocesos
+    areaId?: string | null,
+    procesoId?: string | null
 ) {
     const firestore = useFirestore();
 
@@ -106,24 +106,35 @@ export function useEntityName(
                 path = `areas/${entityId}`;
                 break;
             case 'proceso':
-                if (!areaId) return null; // Requires parent areaId
+                if (!areaId) return null;
                 path = `areas/${areaId}/procesos/${entityId}`;
                 break;
             case 'subproceso':
-                if (!areaId || !procesoId) return null; // Requires parent areaId and procesoId
+                if (!areaId || !procesoId) return null;
                 path = `areas/${areaId}/procesos/${procesoId}/subprocesos/${entityId}`;
                 break;
         }
-        
+
         if (!path) return null;
         return doc(firestore, path);
     }, [firestore, entityId, entityType, areaId, procesoId]);
 
     const { data, isLoading, error } = useDoc(docRef);
 
-    return { 
-        entityName: data?.nombre || '', 
-        isLoading, 
-        error 
+    return {
+        entityName: data?.nombre || '',
+        isLoading,
+        error
     };
+}
+
+export function useIndicador(indicadorId: string | null) {
+    const firestore = useFirestore();
+    const indicadorRef = useMemoFirebase(
+        () => (indicadorId && firestore) ? doc(firestore, 'indicadores', indicadorId) : null,
+        [firestore, indicadorId]
+    );
+    const { data, isLoading, error } = useDoc(indicadorRef);
+    const indicador = data as { nombre: string } | null;
+    return { indicador, isLoading, error };
 }

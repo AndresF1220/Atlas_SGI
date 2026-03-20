@@ -24,22 +24,23 @@ import { Menu } from 'lucide-react';
 import AppSidebarNav from './app-sidebar-nav';
 import { Fragment, useMemo } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { useArea, useProceso, useSubproceso } from '@/hooks/use-areas-data';
+import { useArea, useProceso, useSubproceso, useIndicador } from '@/hooks/use-areas-data';
 import { getAuth, signOut } from 'firebase/auth';
 import { useFirebaseApp } from '@/firebase';
 import { useAuth } from '@/lib/auth';
 
 const hardcodedTranslations: Record<string, string> = {
-    inicio: "Inicio",
-    reports: "Informes",
-    alerts: "Alertas",
-    feedback: "Feedback",
-    documentos: "Mapa de Procesos",
-    account: "Cuenta",
-    administracion: "Administración",
-    area: "Área",
-    proceso: "Proceso",
-    subproceso: "Subproceso",
+  inicio: "Inicio",
+  reports: "Informes",
+  alerts: "Alertas",
+  feedback: "Feedback",
+  documentos: "Mapa de Procesos",
+  account: "Cuenta",
+  administracion: "Administración",
+  area: "Área",
+  proceso: "Proceso",
+  subproceso: "Subproceso",
+  indicador: "Indicador",
 };
 
 type BreadcrumbItemData = {
@@ -50,25 +51,29 @@ type BreadcrumbItemData = {
 };
 
 function useBreadcrumbData(segments: string[]) {
-    const areaId = segments.includes('area') ? segments[segments.indexOf('area') + 1] : null;
-    const procesoId = segments.includes('proceso') ? segments[segments.indexOf('proceso') + 1] : null;
-    const subprocesoId = segments.includes('subproceso') ? segments[segments.indexOf('subproceso') + 1] : null;
-    
-    const { area, isLoading: isLoadingArea } = useArea(areaId);
-    const { proceso, isLoading: isLoadingProceso } = useProceso(areaId, procesoId);
-    const { subproceso, isLoading: isLoadingSubproceso } = useSubproceso(areaId, procesoId, subprocesoId);
+  const areaId = segments.includes('area') ? segments[segments.indexOf('area') + 1] : null;
+  const procesoId = segments.includes('proceso') ? segments[segments.indexOf('proceso') + 1] : null;
+  const subprocesoId = segments.includes('subproceso') ? segments[segments.indexOf('subproceso') + 1] : null;
+  const indicadorId = segments.includes('indicador') ? segments[segments.indexOf('indicador') + 1] : null;
 
-    return {
-        area,
-        proceso,
-        subproceso,
-        isLoading: isLoadingArea || isLoadingProceso || isLoadingSubproceso,
-        dataMap: {
-            ...(areaId && { [areaId]: area?.nombre }),
-            ...(procesoId && { [procesoId]: proceso?.nombre }),
-            ...(subprocesoId && { [subprocesoId]: subproceso?.nombre }),
-        }
-    };
+  const { area, isLoading: isLoadingArea } = useArea(areaId);
+  const { proceso, isLoading: isLoadingProceso } = useProceso(areaId, procesoId);
+  const { subproceso, isLoading: isLoadingSubproceso } = useSubproceso(areaId, procesoId, subprocesoId);
+  const { indicador, isLoading: isLoadingIndicador } = useIndicador(indicadorId);
+
+  return {
+    area,
+    proceso,
+    subproceso,
+    indicador,
+    isLoading: isLoadingArea || isLoadingProceso || isLoadingSubproceso || isLoadingIndicador,
+    dataMap: {
+      ...(areaId && area?.nombre ? { [areaId]: area.nombre } : {}),
+      ...(procesoId && proceso?.nombre ? { [procesoId]: proceso.nombre } : {}),
+      ...(subprocesoId && subproceso?.nombre ? { [subprocesoId]: subproceso.nombre } : {}),
+      ...(indicadorId && indicador?.nombre ? { [indicadorId]: indicador.nombre } : {}),
+    }
+  };
 }
 
 
@@ -80,7 +85,7 @@ export default function AppHeader() {
   const pathSegments = pathname.split('/').filter(Boolean);
 
   const { isLoading, dataMap } = useBreadcrumbData(pathSegments);
-  
+
   const handleLogout = async () => {
     const auth = getAuth(app);
     if (setIsLoggingOut) setIsLoggingOut(true);
@@ -89,25 +94,32 @@ export default function AppHeader() {
   }
 
   const breadcrumbItems = useMemo(() => {
-    return pathSegments.map((segment, index): BreadcrumbItemData | null => {
-        const isDynamicSegmentName = ['area', 'proceso', 'subproceso'].includes(segment);
-        if (isDynamicSegmentName) return null;
+    const items = pathSegments.map((segment, index): BreadcrumbItemData | null => {
+      const isDynamicSegmentName = ['area', 'proceso', 'subproceso', 'indicador'].includes(segment);
+      if (isDynamicSegmentName) return null;
 
-        const isDynamicId = !hardcodedTranslations[segment];
-        const label = hardcodedTranslations[segment] || dataMap[segment] || segment;
-        const href = `/${pathSegments.slice(0, index + 1).join('/')}`;
-        const isLast = index === pathSegments.length - 1;
+      const isDynamicId = !hardcodedTranslations[segment];
+      const label = hardcodedTranslations[segment] || dataMap[segment] || segment;
+      const href = `/${pathSegments.slice(0, index + 1).join('/')}`;
+      const isLast = index === pathSegments.length - 1;
 
-        if (isLoading && isDynamicId && isLast) {
-             return { href, label: 'Cargando...', isLast: true, isClickable: false };
-        }
+      if (isLoading && isDynamicId && isLast) {
+        return { href, label: 'Cargando...', isLast: true, isClickable: false };
+      }
 
-        const isSubprocesoId = pathSegments[index - 1] === 'subproceso';
-        const isClickable = !isLast && !isSubprocesoId;
+      const isSubprocesoId = pathSegments[index - 1] === 'subproceso';
+      const isIndicadorId = pathSegments[index - 1] === 'indicador';
+      const isClickable = !isLast && !isSubprocesoId && !isIndicadorId;
 
-        return { href, label, isLast, isClickable };
+      return { href, label, isLast, isClickable };
     }).filter((item): item is BreadcrumbItemData => item !== null);
-}, [pathSegments, dataMap, isLoading]);
+
+    // Eliminar items consecutivos con el mismo label
+    const deduped = items.filter((item, i, arr) =>
+      i === 0 || item.label !== arr[i - 1].label
+    );
+    return deduped;
+  }, [pathSegments, dataMap, isLoading]);
 
   return (
     <header className="flex h-16 items-center gap-4 border-b-[2px] border-gray-300 bg-background px-4 lg:px-6 sticky top-0 z-30">
@@ -126,24 +138,24 @@ export default function AppHeader() {
       <div className="w-full flex-1 flex items-center gap-4">
         <Breadcrumb className="hidden md:flex">
           <BreadcrumbList>
-             {breadcrumbItems.map((item, index) => (
-                <Fragment key={item.href}>
-                  {index > 0 && item.label && <BreadcrumbSeparator />}
-                   {item.label && (
-                        <BreadcrumbItem>
-                            {item.isClickable ? (
-                            <BreadcrumbLink asChild>
-                                <Link href={item.href} className="capitalize">
-                                {item.label}
-                                </Link>
-                            </BreadcrumbLink>
-                            ) : (
-                            <BreadcrumbPage className="font-normal capitalize">{item.label}</BreadcrumbPage>
-                            )}
-                        </BreadcrumbItem>
-                   )}
-                </Fragment>
-             ))}
+            {breadcrumbItems.map((item, index) => (
+              <Fragment key={item.href}>
+                {index > 0 && item.label && <BreadcrumbSeparator />}
+                {item.label && (
+                  <BreadcrumbItem>
+                    {item.isClickable ? (
+                      <BreadcrumbLink asChild>
+                        <Link href={item.href} className="capitalize">
+                          {item.label}
+                        </Link>
+                      </BreadcrumbLink>
+                    ) : (
+                      <BreadcrumbPage className="font-normal capitalize">{item.label}</BreadcrumbPage>
+                    )}
+                  </BreadcrumbItem>
+                )}
+              </Fragment>
+            ))}
           </BreadcrumbList>
         </Breadcrumb>
       </div>
@@ -151,8 +163,8 @@ export default function AppHeader() {
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon" className="rounded-full">
             <Avatar className="h-9 w-9">
-               <AvatarImage src={user?.photoURL || "https://images.unsplash.com/photo-1511367461989-f85a21fda167?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxwcm9maWxlfGVufDB8fHx8MTc2MTY0MDYwMXww&ixlib=rb-4.1.0&q=80&w=1080"} alt={user?.displayName || "Usuario"} />
-               <AvatarFallback>{user?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U'}</AvatarFallback>
+              <AvatarImage src={user?.photoURL || "https://images.unsplash.com/photo-1511367461989-f85a21fda167?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxwcm9maWxlfGVufDB8fHx8MTc2MTY0MDYwMXww&ixlib=rb-4.1.0&q=80&w=1080"} alt={user?.displayName || "Usuario"} />
+              <AvatarFallback>{user?.displayName?.charAt(0) || user?.email?.charAt(0) || 'U'}</AvatarFallback>
             </Avatar>
             <span className="sr-only">Alternar menú de usuario</span>
           </Button>
@@ -160,7 +172,7 @@ export default function AppHeader() {
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
           <DropdownMenuSeparator />
-           <DropdownMenuItem asChild><Link href="/inicio/account">Configuración</Link></DropdownMenuItem>
+          <DropdownMenuItem asChild><Link href="/inicio/account">Configuración</Link></DropdownMenuItem>
           <DropdownMenuItem disabled>Soporte</DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout}>Cerrar Sesión</DropdownMenuItem>
